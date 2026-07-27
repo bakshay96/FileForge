@@ -72,16 +72,39 @@ def detect_mime_type(file_bytes: bytes) -> str:
     """
     Detect the true MIME type from file magic bytes.
     Does NOT trust the file extension or Content-Type header.
-
-    Args:
-        file_bytes: Raw bytes of the uploaded file (first 2048 bytes suffice).
-
-    Returns:
-        MIME type string e.g. 'image/jpeg'.
+    Includes robust fallback for cloud environments without system libmagic.
     """
-    mime = magic.from_buffer(file_bytes, mime=True)
-    logger.debug(f"Detected MIME type: {mime}")
-    return mime
+    try:
+        mime = magic.from_buffer(file_bytes, mime=True)
+        logger.debug(f"Detected MIME type via magic: {mime}")
+        return mime
+    except Exception as e:
+        logger.warning(f"Magic byte detection fallback: {e}")
+        
+        # 1. PDF header magic (%PDF-)
+        if file_bytes.startswith(b"%PDF"):
+            return "application/pdf"
+            
+        # 2. Image inspection via Pillow
+        try:
+            import io
+            from PIL import Image
+            img = Image.open(io.BytesIO(file_bytes))
+            fmt_mime_map = {
+                "JPEG": "image/jpeg",
+                "PNG": "image/png",
+                "WEBP": "image/webp",
+                "GIF": "image/gif",
+                "BMP": "image/bmp",
+                "TIFF": "image/tiff",
+                "ICO": "image/x-icon",
+            }
+            if img.format in fmt_mime_map:
+                return fmt_mime_map[img.format]
+        except Exception:
+            pass
+
+        return "application/octet-stream"
 
 
 def validate_image_file(file_bytes: bytes, filename: str) -> str:
