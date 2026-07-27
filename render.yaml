@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: fileforge-backend
+    env: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: "apt-get update && apt-get install -y libmagic1 && pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: APP_NAME
+        value: FileForge
+      - key: DEBUG
+        value: false
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB_NAME
+        value: fileforge
+      - key: TMP_DIR
+        value: /tmp
+      - key: MAX_FILE_SIZE_MB
+        value: 20
+      - key: FILE_EXPIRY_MINUTES
+        value: 30
+      - key: AUTH_EXPIRY_MINUTES
+        value: 1440
+      - key: CORS_ORIGINS
+        value: "*"

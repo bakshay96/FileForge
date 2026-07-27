@@ -1,0 +1,19 @@
+# ── Backend ───────────────────────────────────
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/tmp/*
+!backend/tmp/.gitkeep
+backend/.env
+
+# ── Frontend ──────────────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+
+# ── General ───────────────────────────────────
+*.log
+.DS_Store
+Thumbs.db
