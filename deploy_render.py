@@ -63,8 +63,6 @@ def main():
         service_name = backend_service["name"]
         service_url = backend_service.get("serviceDetails", {}).get("url")
         print(f"[OK] Found existing service '{service_name}' (ID: {service_id})")
-        # Ensure rootDir is set to backend
-        client.patch(f"{API_BASE}/services/{service_id}", json={"rootDir": "backend"})
     else:
         print("[INFO] Creating new Web Service 'fileforge-backend' on Render...")
         payload = {
@@ -73,7 +71,6 @@ def main():
             "ownerId": services[0]["service"]["ownerId"] if services else "",
             "repo": "https://github.com/bakshay96/FileForge",
             "autoDeploy": "yes",
-            "rootDir": "backend",
             "serviceDetails": {
                 "env": "python",
                 "envSpecificDetails": {
@@ -82,6 +79,7 @@ def main():
                 },
                 "region": "singapore",
                 "plan": "free",
+                "rootDir": "backend",
             },
         }
         res = client.post(f"{API_BASE}/services", json=payload)
@@ -135,18 +133,18 @@ def main():
                 status_str = res.json().get("status")
                 print(f"   Status: {status_str}")
                 if status_str == "live":
-                    print(f"\n[SUCCESS] DEPLOYMENT LIVE!")
-                    print(f"URL: {service_url}")
-                    print(f"Health: {service_url}/api/health")
+                    print(f"\n🎉 DEPLOYMENT LIVE!")
+                    print(f"🌐 Backend URL: {service_url}")
+                    print(f"🔗 Health Check: {service_url}/api/health")
                     return
                 elif status_str in ("build_failed", "deactivate_failed"):
-                    print(f"\n[ERROR] Deployment failed with status: {status_str}")
+                    print(f"\n❌ Deployment failed with status: {status_str}")
                     sys.exit(1)
 
     print(f"\n[COMPLETE] Deployment setup finished!")
     if service_url:
-        print(f"URL: {service_url}")
-        print(f"Health: {service_url}/api/health")
+        print(f"🌐 Backend URL: {service_url}")
+        print(f"🔗 Health Check: {service_url}/api/health")
 
 if __name__ == "__main__":
     main()
