@@ -58,24 +58,56 @@ async def lifespan(app: FastAPI):
     FastAPI lifespan context manager.
     Runs startup tasks before yield and shutdown tasks after.
     """
-    logger.info(f"🚀 Starting {settings.app_name} v{settings.app_version}")
+    # ── Startup Banner ────────────────────────────────────────────────────────
+    print("")
+    print("╔══════════════════════════════════════════════════╗")
+    print(f"║         {settings.app_name} API  v{settings.app_version}                    ║")
+    print("╚══════════════════════════════════════════════════╝")
+    print("")
 
-    # Ensure tmp directory exists
+    # Step 1 — Tmp directory
+    logger.info("[ 1/4 ] Preparing temp storage...")
     settings.tmp_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Temp storage: {settings.tmp_dir.resolve()}")
+    logger.info(f"        ✔  Temp dir ready: {settings.tmp_dir.resolve()}")
 
-    # Connect to MongoDB
+    # Step 2 — MongoDB
+    logger.info("[ 2/4 ] Connecting to MongoDB...")
     await connect_to_mongo()
 
-    # Start background cleanup scheduler
+    # Step 3 — Cleanup scheduler
+    logger.info("[ 3/4 ] Starting background cleanup scheduler...")
     start_cleanup_scheduler()
+    logger.info(f"        ✔  Cleanup runs every {settings.cleanup_interval_minutes} min "
+                f"| File expiry: {settings.file_expiry_minutes} min")
+
+    # Step 4 — Routes summary
+    logger.info("[ 4/4 ] Registering API routes...")
+    logger.info("        ✔  Auth     →  /api/auth/*")
+    logger.info("        ✔  Image    →  /api/image/*")
+    logger.info("        ✔  PDF      →  /api/pdf/*")
+    logger.info("        ✔  History  →  /api/history")
+    logger.info("        ✔  Download →  /api/download/{job_id}")
+    logger.info("        ✔  Health   →  /api/health")
+
+    # ── All systems go ────────────────────────────────────────────────────────
+    print("")
+    print("┌──────────────────────────────────────────────────┐")
+    print("│  ✅  All systems go! Server is ready.            │")
+    print(f"│  🌐  Docs   →  http://localhost:{settings.port}/docs           │")
+    print(f"│  ❤️   Health →  http://localhost:{settings.port}/api/health     │")
+    print("└──────────────────────────────────────────────────┘")
+    print("")
 
     yield  # Application runs here
 
-    # ── Shutdown ──
-    logger.info(f"Shutting down {settings.app_name}...")
+    # ── Shutdown ──────────────────────────────────────────────────────────────
+    print("")
+    logger.info("Shutting down FileForge...")
+    logger.info("  Stopping cleanup scheduler...")
     stop_cleanup_scheduler()
+    logger.info("  Closing MongoDB connection...")
     await close_mongo_connection()
+    logger.info("  ✔  Shutdown complete. Goodbye!")
 
 
 # ── FastAPI App ───────────────────────────────────────────────────────────────

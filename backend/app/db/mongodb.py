@@ -26,40 +26,44 @@ async def connect_to_mongo() -> None:
     """
     global _client
 
-    logger.info(f"Connecting to MongoDB at: {settings.mongo_uri}")
+    # Mask password in log output for security
+    safe_uri = settings.mongo_uri.split("@")[-1] if "@" in settings.mongo_uri else settings.mongo_uri
+    logger.info(f"        Connecting to → ...@{safe_uri}")
+
     _client = AsyncIOMotorClient(
         settings.mongo_uri,
         serverSelectionTimeoutMS=10000,
         connectTimeoutMS=10000,
     )
 
-    # Verify connection is alive with retries
+    # Verify connection with retries
     connected = False
     for attempt in range(1, 4):
         try:
+            logger.info(f"        Attempt {attempt}/3 — pinging MongoDB...")
             await _client.admin.command("ping")
-            logger.info("MongoDB connection established successfully.")
+            logger.info("        ✔  MongoDB connected successfully!")
             connected = True
             break
         except Exception as e:
-            logger.warning(f"MongoDB connection attempt {attempt}/3 failed: {e}")
+            logger.warning(f"        ✘  Attempt {attempt}/3 failed: {e}")
             import asyncio
             await asyncio.sleep(2)
 
     if not connected:
-        logger.error("Could not establish MongoDB connection after 3 attempts.")
+        logger.error("        ✘  Could not connect to MongoDB after 3 attempts. Check MONGO_URI in .env")
+        return
 
-    # Create indexes if connected
-    if connected:
-        try:
-            db = _client[settings.mongo_db_name]
-            collection = db["file_jobs"]
-            await collection.create_index([("job_id", ASCENDING)], unique=True, background=True)
-            await collection.create_index([("expires_at", ASCENDING)], background=True)
-            await collection.create_index([("created_at", ASCENDING)], background=True)
-            logger.info("MongoDB indexes ensured.")
-        except Exception as idx_err:
-            logger.warning(f"Failed to ensure indexes: {idx_err}")
+    # Create indexes
+    try:
+        db = _client[settings.mongo_db_name]
+        collection = db["file_jobs"]
+        await collection.create_index([("job_id", ASCENDING)], unique=True, background=True)
+        await collection.create_index([("expires_at", ASCENDING)], background=True)
+        await collection.create_index([("created_at", ASCENDING)], background=True)
+        logger.info(f"        ✔  DB: '{settings.mongo_db_name}' | Indexes ready")
+    except Exception as idx_err:
+        logger.warning(f"        ⚠  Index creation warning: {idx_err}")
 
 
 async def close_mongo_connection() -> None:
