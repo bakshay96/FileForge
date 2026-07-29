@@ -66,5 +66,8 @@ class Settings(BaseSettings):
 # Singleton settings instance imported by all modules
 settings = Settings()
 
-# Ensure tmp directory exists on startup
-settings.tmp_dir.mkdir(parents=True, exist_ok=True)
+# Ensure tmp directory exists on startup safely
+try:
+    settings.tmp_dir.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
