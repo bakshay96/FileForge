@@ -62,27 +62,20 @@ async def lifespan(app: FastAPI):
 
     # Ensure tmp directory exists
     settings.tmp_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"📁 Temp storage: {settings.tmp_dir.resolve()}")
+    logger.info(f"Temp storage: {settings.tmp_dir.resolve()}")
 
-    # Connect to MongoDB asynchronously without blocking server port binding
-    import asyncio
-    asyncio.create_task(connect_to_mongo())
+    # Connect to MongoDB
+    await connect_to_mongo()
 
     # Start background cleanup scheduler
-    try:
-        start_cleanup_scheduler()
-    except Exception as e:
-        logger.warning(f"Cleanup scheduler warning: {e}")
+    start_cleanup_scheduler()
 
     yield  # Application runs here
 
     # ── Shutdown ──
-    logger.info(f"🛑 Shutting down {settings.app_name}...")
-    try:
-        stop_cleanup_scheduler()
-        await close_mongo_connection()
-    except Exception:
-        pass
+    logger.info(f"Shutting down {settings.app_name}...")
+    stop_cleanup_scheduler()
+    await close_mongo_connection()
 
 
 # ── FastAPI App ───────────────────────────────────────────────────────────────
