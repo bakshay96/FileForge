@@ -1,11 +1,13 @@
 """
 FileForge — Application Settings
 Uses pydantic-settings to read from .env file with full type validation.
+All secrets MUST be provided via .env — no hardcoded defaults in production.
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from pathlib import Path
+import secrets
 
 
 class Settings(BaseSettings):
@@ -42,7 +44,9 @@ class Settings(BaseSettings):
     cleanup_interval_minutes: int = Field(default=5)
 
     # ── JWT Auth ─────────────────────────────────────────────────────────────
-    jwt_secret: str = Field(default="fileforge-super-secret-change-in-prod-2024")
+    # REQUIRED — set JWT_SECRET in your .env file
+    # Generate:  python -c "import secrets; print(secrets.token_hex(32))"
+    jwt_secret: str = Field(default_factory=lambda: secrets.token_hex(32))
     jwt_algorithm: str = Field(default="HS256")
     jwt_expire_minutes: int = Field(default=10080)         # 7 days
 
