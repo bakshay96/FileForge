@@ -271,11 +271,43 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
   const startPos  = useRef<{x:number;y:number}|null>(null);
   const lastPos   = useRef<{x:number;y:number}|null>(null);
 
-  /* Lock body scroll */
+  /* Lock body + html scroll AND inject CSS to guarantee full-screen */
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    document.documentElement.style.overflow = "hidden";
+
+    // Inject a style tag so position:fixed truly covers the viewport
+    const styleEl = document.createElement("style");
+    styleEl.id = "ff-canvas-override";
+    styleEl.textContent = `
+      #ff-canvas-root {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        z-index: 2147483647 !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        background: #07090e !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+      document.getElementById("ff-canvas-override")?.remove();
+    };
   }, []);
 
   /* Load image */
@@ -818,11 +850,15 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
      FULL SCREEN RENDER
   ═══════════════════════════════════════════════════════════════ */
   return (
-    <div style={{
-      position:"fixed",top:0,left:0,width:"100vw",height:"100vh",
-      zIndex:9999,display:"flex",flexDirection:"column",overflow:"hidden",
-      background:"#07090e",color:"#e2e8f0",fontFamily:"'Inter',system-ui,sans-serif",
-    }}>
+    <div
+      id="ff-canvas-root"
+      style={{
+        position:"fixed",top:0,left:0,right:0,bottom:0,
+        width:"100vw",height:"100vh",
+        zIndex:2147483647,display:"flex",flexDirection:"column",overflow:"hidden",
+        background:"#07090e",color:"#e2e8f0",fontFamily:"'Inter',system-ui,sans-serif",
+        margin:0,padding:0,
+      }}>
       {/* ══ HEADER ══════════════════════════════════════════════ */}
       <div style={{
         flexShrink:0,height:"48px",background:"#0c0f18",
