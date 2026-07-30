@@ -3,16 +3,15 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
   RotateCw,
-  FlipHorizontal,
-  FlipVertical,
   Type,
   Pencil,
-  RotateCcw,
-  Check,
+  Paintbrush,
+  Eraser,
   X,
-  Sliders,
-  Crop as CropIcon,
-  Maximize2,
+  Zap,
+  ChevronDown,
+  Sun,
+  Contrast as ContrastIcon,
 } from "lucide-react";
 
 interface CanvasEditorProps {
@@ -25,42 +24,35 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
-  // Tools: draw | text | crop | resize | adjust
-  const [tool, setTool] = useState<"draw" | "text" | "crop" | "resize" | "adjust">("draw");
-  const [color, setColor] = useState("#6366f1");
-  const [brushSize, setBrushSize] = useState(5);
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
-  const [textInput, setTextInput] = useState("");
+  // Tools: 'pen' | 'brush' | 'erase'
+  const [tool, setTool] = useState<"pen" | "brush" | "erase">("pen");
+  const [color, setColor] = useState("#3b82f6");
+  const [brushSize, setBrushSize] = useState(6);
+  
+  // Adjustments (-100 to +100 as shown in Image 2)
+  const [brightness, setBrightness] = useState(15);
+  const [contrast, setContrast] = useState(28);
   const [rotation, setRotation] = useState(0);
-  const [flipH, setFlipH] = useState(false);
-  const [flipV, setFlipV] = useState(false);
 
-  // Dimension Resize Tool State
-  const [customWidth, setCustomWidth] = useState<number>(0);
-  const [customHeight, setCustomHeight] = useState<number>(0);
-
-  // Crop Selection Box State
-  const [cropBox, setCropBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  const isCroppingRef = useRef(false);
-  const cropStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  // Drawing State
-  const isDrawingRef = useRef(false);
-  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  // Sidebar Text Annotation state
+  const [captionText, setCaptionText] = useState("Golden Hour View");
+  const [fontFamily, setFontFamily] = useState("Inter");
+  const [fontSize, setFontSize] = useState(16);
 
   // History stack for undo
   const [history, setHistory] = useState<ImageData[]>([]);
 
-  // Load Image File into HTMLImageElement
+  // Drawing state
+  const isDrawingRef = useRef(false);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Load Image File
   useEffect(() => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       setImageObj(img);
-      setCustomWidth(img.naturalWidth || 800);
-      setCustomHeight(img.naturalHeight || 600);
     };
     img.src = url;
 
@@ -69,7 +61,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     };
   }, [file]);
 
-  // Render Image and adjustments onto Canvas
+  // Redraw Canvas with adjustments
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !imageObj) return;
@@ -77,20 +69,19 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Use custom dimensions if set, or natural image dimensions
-    canvas.width = customWidth || imageObj.naturalWidth || 800;
-    canvas.height = customHeight || imageObj.naturalHeight || 600;
+    canvas.width = imageObj.naturalWidth || 800;
+    canvas.height = imageObj.naturalHeight || 600;
 
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Apply Filters & Transformations
-    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+    // CSS filter values: 100 + brightness, 100 + contrast
+    const brightnessVal = 100 + brightness;
+    const contrastVal = 100 + contrast;
+    ctx.filter = `brightness(${brightnessVal}%) contrast(${contrastVal}%)`;
 
-    // Move to center for rotation / flip
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate((rotation * Math.PI) / 180);
-    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
 
     ctx.drawImage(
       imageObj,
@@ -101,13 +92,12 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     );
 
     ctx.restore();
-  }, [imageObj, customWidth, customHeight, brightness, contrast, rotation, flipH, flipV]);
+  }, [imageObj, brightness, contrast, rotation]);
 
   useEffect(() => {
     redrawCanvas();
   }, [redrawCanvas]);
 
-  // Save State to History
   const saveState = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -117,24 +107,6 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     setHistory((prev) => [...prev.slice(-10), data]);
   };
 
-  // Undo Last Draw
-  const handleUndo = () => {
-    if (history.length === 0) {
-      redrawCanvas();
-      setCropBox(null);
-      return;
-    }
-    const previousState = history[history.length - 1];
-    setHistory((prev) => prev.slice(0, -1));
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.putImageData(previousState, 0, 0);
-    setCropBox(null);
-  };
-
-  // Canvas Coordinate Helper
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -147,54 +119,16 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     };
   };
 
-  // Mouse Handlers (Drawing & Crop Selection)
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoords(e);
-
-    if (tool === "crop") {
-      isCroppingRef.current = true;
-      cropStartRef.current = coords;
-      setCropBox({ x: coords.x, y: coords.y, w: 0, h: 0 });
-      return;
-    }
-
-    if (tool === "text" && textInput.trim()) {
-      saveState();
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.save();
-      ctx.font = `bold ${Math.max(20, brushSize * 4)}px Outfit, sans-serif`;
-      ctx.fillStyle = color;
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 4;
-      ctx.fillText(textInput, coords.x, coords.y);
-      ctx.restore();
-      return;
-    }
-
-    if (tool === "draw") {
-      saveState();
-      isDrawingRef.current = true;
-      lastPosRef.current = coords;
-    }
+    saveState();
+    isDrawingRef.current = true;
+    lastPosRef.current = coords;
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return;
     const coords = getCanvasCoords(e);
-
-    if (tool === "crop" && isCroppingRef.current && cropStartRef.current) {
-      const x = Math.min(cropStartRef.current.x, coords.x);
-      const y = Math.min(cropStartRef.current.y, coords.y);
-      const w = Math.abs(coords.x - cropStartRef.current.x);
-      const h = Math.abs(coords.y - cropStartRef.current.y);
-      setCropBox({ x, y, w, h });
-      return;
-    }
-
-    if (!isDrawingRef.current || tool !== "draw") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -204,8 +138,16 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     ctx.beginPath();
     ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
     ctx.lineTo(coords.x, coords.y);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = brushSize * 2;
+
+    if (tool === "erase") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineWidth = brushSize * 4;
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = tool === "brush" ? brushSize * 3 : brushSize;
+    }
+
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.stroke();
@@ -216,37 +158,27 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
 
   const handleMouseUp = () => {
     isDrawingRef.current = false;
-    isCroppingRef.current = false;
     lastPosRef.current = null;
   };
 
-  // Apply Crop to Canvas
-  const applyCrop = () => {
-    if (!cropBox || cropBox.w < 10 || cropBox.h < 10) return;
+  // Stamp Text from Sidebar onto Canvas
+  const handleAddText = () => {
+    if (!captionText.trim()) return;
     saveState();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const croppedData = ctx.getImageData(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
-    canvas.width = cropBox.w;
-    canvas.height = cropBox.h;
-    setCustomWidth(cropBox.w);
-    setCustomHeight(cropBox.h);
-    ctx.putImageData(croppedData, 0, 0);
-
-    // Create new Image object from cropped canvas
-    const croppedUrl = canvas.toDataURL("image/png");
-    const newImg = new Image();
-    newImg.onload = () => {
-      setImageObj(newImg);
-      setCropBox(null);
-    };
-    newImg.src = croppedUrl;
+    ctx.save();
+    ctx.font = `bold ${Math.max(24, fontSize * 2)}px ${fontFamily}, sans-serif`;
+    ctx.fillStyle = color;
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
+    ctx.shadowBlur = 6;
+    ctx.fillText(captionText, canvas.width / 4, canvas.height / 2);
+    ctx.restore();
   };
 
-  // Save Modified Canvas to File
   const handleSave = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -263,267 +195,257 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     );
   };
 
-  const COLORS = ["#6366f1", "#ef4444", "#10b981", "#f59e0b", "#ec4899", "#ffffff", "#000000"];
+  const COLOR_PALETTE = ["#3b82f6", "#ef4444", "#eab308", "#22c55e", "#ffffff"];
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#0f1117] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+      {/* Modal Shell matching Reference Image 2 */}
+      <div className="bg-[#0f1117] border border-white/10 rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl flex flex-col">
         
-        {/* Top Bar */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-          <div className="flex items-center gap-2">
-            <Pencil className="w-5 h-5 text-brand-400" />
-            <h3 className="font-bold text-white text-base">Interactive Canvas &amp; Image Editor</h3>
+        {/* Modal Header matching Reference Image 2 */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131620]">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+            <div className="w-5 h-5 rounded bg-gradient-to-r from-cyan-400 to-indigo-500 flex items-center justify-center">
+              <Zap className="w-3 h-3 text-white" fill="currentColor" />
+            </div>
+            <span>FileForge</span>
+            <span className="text-slate-600">&gt;</span>
+            <span className="text-white font-bold">Image Editor</span>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleUndo}
-              className="p-2 text-slate-400 hover:text-white rounded-lg bg-white/5 hover:bg-white/10 transition text-xs flex items-center gap-1.5"
-              title="Undo"
+              onClick={handleSave}
+              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition"
             >
-              <RotateCcw className="w-4 h-4" /> Undo
+              Save Changes
             </button>
             <button
               onClick={onCancel}
-              className="p-2 text-slate-400 hover:text-white rounded-lg bg-white/5 hover:bg-white/10 transition"
+              className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition"
             >
+              Cancel
+            </button>
+            <button onClick={onCancel} className="text-slate-400 hover:text-white p-1">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Toolbar */}
-        <div className="p-3 border-b border-white/10 bg-white/[0.01] flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Editor Body Grid: Main Viewport Left + Text Annotation Sidebar Right */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 flex-1">
           
-          {/* Tool Selector */}
-          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-            <button
-              onClick={() => { setTool("draw"); setCropBox(null); }}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
-                tool === "draw" ? "bg-brand-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Pencil className="w-3.5 h-3.5" /> Pen
-            </button>
-            <button
-              onClick={() => { setTool("crop"); setCropBox(null); }}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
-                tool === "crop" ? "bg-brand-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <CropIcon className="w-3.5 h-3.5" /> Crop
-            </button>
-            <button
-              onClick={() => { setTool("resize"); setCropBox(null); }}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
-                tool === "resize" ? "bg-brand-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Maximize2 className="w-3.5 h-3.5" /> Size
-            </button>
-            <button
-              onClick={() => { setTool("text"); setCropBox(null); }}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
-                tool === "text" ? "bg-brand-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Type className="w-3.5 h-3.5" /> Text
-            </button>
-            <button
-              onClick={() => { setTool("adjust"); setCropBox(null); }}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition ${
-                tool === "adjust" ? "bg-brand-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" /> Adjust
-            </button>
-          </div>
-
-          {/* Transform Actions */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setRotation((prev) => (prev + 90) % 360)}
-              className="p-2 text-slate-300 bg-white/5 hover:bg-white/10 rounded-lg flex items-center gap-1"
-              title="Rotate 90°"
-            >
-              <RotateCw className="w-4 h-4" /> 90°
-            </button>
-            <button
-              onClick={() => setFlipH((prev) => !prev)}
-              className={`p-2 rounded-lg flex items-center gap-1 transition ${
-                flipH ? "bg-brand-500/20 text-brand-300 border border-brand-500/30" : "bg-white/5 text-slate-300 hover:bg-white/10"
-              }`}
-              title="Flip Horizontal"
-            >
-              <FlipHorizontal className="w-4 h-4" /> Flip H
-            </button>
-            <button
-              onClick={() => setFlipV((prev) => !prev)}
-              className={`p-2 rounded-lg flex items-center gap-1 transition ${
-                flipV ? "bg-brand-500/20 text-brand-300 border border-brand-500/30" : "bg-white/5 text-slate-300 hover:bg-white/10"
-              }`}
-              title="Flip Vertical"
-            >
-              <FlipVertical className="w-4 h-4" /> Flip V
-            </button>
-          </div>
-
-          {/* Color Palette */}
-          {(tool === "draw" || tool === "text") && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-400 font-medium text-[11px]">Color:</span>
-              {COLORS.map((c) => (
+          {/* Main Viewport Column (3 cols) */}
+          <div className="lg:col-span-3 border-r border-white/10 p-4 flex flex-col justify-between">
+            
+            {/* Top Toolbar Sub-Bar matching Reference Image 2 */}
+            <div className="bg-[#151822] border border-white/10 rounded-xl p-2 mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              
+              {/* Tool selector: Pen, Brush, Erase */}
+              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg">
                 <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={`w-5 h-5 rounded-full border border-white/20 transition ${
-                    color === c ? "scale-125 ring-2 ring-brand-400" : ""
+                  onClick={() => setTool("pen")}
+                  className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition ${
+                    tool === "pen" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
                   }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Dynamic Tool Controls Sub-bar */}
-        <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center gap-4 text-xs text-slate-300">
-          {tool === "draw" && (
-            <div className="flex items-center gap-3 w-full">
-              <span className="text-slate-400">Stroke Size: {brushSize}px</span>
-              <input
-                type="range"
-                min={1}
-                max={30}
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="w-48 accent-brand-500 cursor-pointer"
-              />
-            </div>
-          )}
-
-          {tool === "crop" && (
-            <div className="flex items-center justify-between w-full">
-              <span className="text-slate-400">
-                Click &amp; drag box on image to crop. {cropBox ? `Selected: ${Math.round(cropBox.w)} × ${Math.round(cropBox.h)} px` : ""}
-              </span>
-              {cropBox && cropBox.w > 10 && (
-                <button
-                  onClick={applyCrop}
-                  className="px-3 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition flex items-center gap-1"
                 >
-                  <CropIcon className="w-3.5 h-3.5" /> Apply Crop
+                  <Pencil className="w-3.5 h-3.5" /> Pen
                 </button>
-              )}
-            </div>
-          )}
-
-          {tool === "resize" && (
-            <div className="flex items-center gap-4 w-full">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Width (px):</span>
-                <input
-                  type="number"
-                  value={customWidth}
-                  onChange={(e) => setCustomWidth(Number(e.target.value))}
-                  className="forge-input py-1 text-xs w-24 font-mono"
-                />
+                <button
+                  onClick={() => setTool("brush")}
+                  className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition ${
+                    tool === "brush" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Paintbrush className="w-3.5 h-3.5" /> Brush
+                </button>
+                <button
+                  onClick={() => setTool("erase")}
+                  className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition ${
+                    tool === "erase" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Eraser className="w-3.5 h-3.5" /> Erase
+                </button>
               </div>
+
+              {/* Color Palette Dots */}
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">Height (px):</span>
-                <input
-                  type="number"
-                  value={customHeight}
-                  onChange={(e) => setCustomHeight(Number(e.target.value))}
-                  className="forge-input py-1 text-xs w-24 font-mono"
-                />
+                {COLOR_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setColor(c)}
+                    className={`w-5 h-5 rounded-full border border-white/20 transition ${
+                      color === c ? "scale-125 ring-2 ring-blue-400" : ""
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
               </div>
-            </div>
-          )}
 
-          {tool === "text" && (
-            <div className="flex items-center gap-3 w-full">
-              <input
-                type="text"
-                placeholder="Type text, then click anywhere on image..."
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                className="forge-input py-1 text-xs max-w-md"
-              />
-              <span className="text-slate-500 text-[11px]">Click image to stamp text</span>
-            </div>
-          )}
-
-          {tool === "adjust" && (
-            <div className="flex items-center gap-6 w-full">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Brightness: {brightness}%</span>
+              {/* Stroke Size Slider */}
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
                 <input
                   type="range"
-                  min={20}
-                  max={200}
+                  min={2}
+                  max={25}
+                  value={brushSize}
+                  onChange={(e) => setBrushSize(Number(e.target.value))}
+                  className="w-28 accent-blue-500 cursor-pointer"
+                />
+              </div>
+
+            </div>
+
+            {/* Main Canvas Viewport with Grid Pattern & 8 Blue Handles matching Image 2 */}
+            <div className="relative flex-1 canvas-grid-bg rounded-xl border border-white/10 flex items-center justify-center p-6 min-h-[320px] overflow-hidden">
+              <div className="relative">
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  className="max-w-full max-h-[48vh] object-contain shadow-2xl cursor-crosshair border border-white/20 rounded-md"
+                />
+
+                {/* 8 Blue Round Handles matching Reference Image 2 */}
+                <div className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                
+                <div className="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+              </div>
+            </div>
+
+            {/* Bottom 3 Cards matching Reference Image 2 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+              
+              {/* Card 1: Rotate 90° */}
+              <button
+                onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                className="bg-[#151822] border border-white/10 hover:border-blue-500/40 rounded-xl p-3 flex items-center justify-center gap-2 text-xs font-semibold text-slate-200 transition"
+              >
+                <RotateCw className="w-4 h-4 text-blue-400" /> Rotate 90°
+              </button>
+
+              {/* Card 2: Brightness Slider (-100 to +100) */}
+              <div className="bg-[#151822] border border-white/10 rounded-xl p-3 text-left">
+                <div className="flex justify-between items-center text-xs text-slate-300 font-medium mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <Sun className="w-3.5 h-3.5 text-amber-400" /> Brightness
+                  </span>
+                  <span className="font-mono text-blue-400 font-bold">{brightness > 0 ? `+${brightness}` : brightness}</span>
+                </div>
+                <input
+                  type="range"
+                  min={-100}
+                  max={100}
                   value={brightness}
                   onChange={(e) => setBrightness(Number(e.target.value))}
-                  className="w-32 accent-brand-500"
+                  className="w-full accent-blue-500 cursor-pointer"
                 />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
+                  <span>-100</span>
+                  <span>+100</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Contrast: {contrast}%</span>
+
+              {/* Card 3: Contrast Slider (-100 to +100) */}
+              <div className="bg-[#151822] border border-white/10 rounded-xl p-3 text-left">
+                <div className="flex justify-between items-center text-xs text-slate-300 font-medium mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <ContrastIcon className="w-3.5 h-3.5 text-blue-400" /> Contrast
+                  </span>
+                  <span className="font-mono text-blue-400 font-bold">{contrast > 0 ? `+${contrast}` : contrast}</span>
+                </div>
                 <input
                   type="range"
-                  min={20}
-                  max={200}
+                  min={-100}
+                  max={100}
                   value={contrast}
                   onChange={(e) => setContrast(Number(e.target.value))}
-                  className="w-32 accent-brand-500"
+                  className="w-full accent-blue-500 cursor-pointer"
                 />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
+                  <span>-100</span>
+                  <span>+100</span>
+                </div>
               </div>
+
             </div>
-          )}
-        </div>
 
-        {/* Canvas Display Viewport */}
-        <div className="flex-1 p-4 overflow-auto flex items-center justify-center bg-black/50 min-h-[320px] relative">
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              className={`max-w-full max-h-[55vh] object-contain rounded-lg shadow-lg border border-white/10 ${
-                tool === "crop" ? "cursor-crosshair" : tool === "draw" ? "cursor-crosshair" : "cursor-default"
-              }`}
-            />
+          </div>
 
-            {/* Crop Overlay Rect */}
-            {tool === "crop" && cropBox && cropBox.w > 0 && (
-              <div
-                className="absolute border-2 border-brand-400 bg-brand-500/10 pointer-events-none"
-                style={{
-                  left: `${cropBox.x}px`,
-                  top: `${cropBox.y}px`,
-                  width: `${cropBox.w}px`,
-                  height: `${cropBox.h}px`,
-                }}
+          {/* Right Sidebar Column matching Reference Image 2 */}
+          <div className="p-4 bg-[#11141d] flex flex-col justify-between text-left">
+            <div>
+              <h4 className="text-sm font-bold text-slate-200 mb-1" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                Text Annotation
+              </h4>
+              <p className="text-xs text-slate-400 mb-4">Add caption here...</p>
+
+              {/* Caption Textarea matching Image 2 */}
+              <textarea
+                value={captionText}
+                onChange={(e) => setCaptionText(e.target.value)}
+                placeholder="Type caption..."
+                className="w-full h-24 bg-[#181b26] border border-white/10 rounded-xl p-3 text-xs text-slate-200 focus:border-blue-500 outline-none resize-none mb-4"
               />
-            )}
-          </div>
-        </div>
 
-        {/* Bottom Actions */}
-        <div className="p-4 border-t border-white/10 flex items-center justify-between bg-white/[0.02]">
-          <p className="text-xs text-slate-500">
-            Current Canvas: <span className="font-mono text-brand-300 font-semibold">{customWidth} × {customHeight} px</span>
-          </p>
-          <div className="flex items-center gap-3">
-            <button onClick={onCancel} className="btn-ghost px-4 py-2 text-xs">
-              Cancel
-            </button>
-            <button onClick={handleSave} className="btn-brand px-5 py-2 text-xs font-semibold gap-1.5">
-              <Check className="w-4 h-4" /> Save &amp; Apply Edits
-            </button>
+              {/* Controls Row: Font, Size, Color matching Image 2 */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <select
+                  value={fontFamily}
+                  onChange={(e) => setFontFamily(e.target.value)}
+                  className="bg-[#181b26] border border-white/10 rounded-lg p-2 text-xs text-slate-200 outline-none"
+                >
+                  <option value="Inter">Inter</option>
+                  <option value="Outfit">Outfit</option>
+                  <option value="Roboto">Roboto</option>
+                </select>
+
+                <select
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="bg-[#181b26] border border-white/10 rounded-lg p-2 text-xs text-slate-200 outline-none"
+                >
+                  <option value={14}>14px</option>
+                  <option value={16}>16px</option>
+                  <option value={20}>20px</option>
+                  <option value={24}>24px</option>
+                </select>
+
+                <div className="bg-[#181b26] border border-white/10 rounded-lg p-1.5 flex items-center justify-center">
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-6 h-6 rounded cursor-pointer border-none bg-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Add Text Button matching Image 2 */}
+              <button
+                onClick={handleAddText}
+                className="w-full py-2.5 rounded-xl bg-[#262c3d] hover:bg-[#32394f] text-slate-200 font-semibold text-xs transition"
+              >
+                Add Text
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-500 mt-6">
+              💡 Use Pen &amp; Brush to annotate directly on canvas.
+            </p>
           </div>
+
         </div>
 
       </div>
