@@ -18,18 +18,19 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-function formatDateTime(isoString?: string): string {
+function formatIndianDateTime(isoString?: string): string {
   if (!isoString) return "Just now";
   try {
     const d = new Date(isoString);
-    return d.toLocaleString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const timeStr = d.toLocaleString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
+    return `${day}/${month}/${year}, ${timeStr}`;
   } catch {
     return isoString;
   }
@@ -123,17 +124,26 @@ export default function ResultPanel({
   const savedBytes = Math.max(0, originalSize - newSize);
   const compressionPct = Math.min(85, Math.max(15, Math.round((savedBytes / originalSize) * 100)));
 
+  const handleClose = () => {
+    if (onClose) onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+      onClick={handleClose}
+    >
       {/* Modal Shell matching Reference Image 3 */}
-      <div className="bg-[#12151e] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-up">
-        
+      <div
+        className="bg-[#12151e] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-up cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header matching Reference Image 3 */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#171b27]">
           <h3 className="font-bold text-white text-base truncate pr-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
             Conversion Result: <span className="text-cyan-400 font-mono">{job.output_filename || job.original_filename}</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+          <button onClick={handleClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -170,7 +180,7 @@ export default function ResultPanel({
                 <CheckCircle className="w-4 h-4 text-emerald-400" /> Successfully Converted!
               </p>
               <p className="text-[11px] text-slate-500 mt-1">
-                Converted on: {formatDateTime(job.created_at)}
+                Converted on: {formatIndianDateTime(job.created_at)}
               </p>
             </div>
           </div>

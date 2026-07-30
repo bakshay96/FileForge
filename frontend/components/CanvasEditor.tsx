@@ -10,6 +10,8 @@ import {
   Zap,
   Sun,
   Contrast as ContrastIcon,
+  Crop as CropIcon,
+  Check,
 } from "lucide-react";
 
 interface CanvasEditorProps {
@@ -20,10 +22,11 @@ interface CanvasEditorProps {
 
 export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
-  // Tools: 'pen' | 'brush' | 'erase'
-  const [tool, setTool] = useState<"pen" | "brush" | "erase">("pen");
+  // Tools: 'pen' | 'brush' | 'erase' | 'crop'
+  const [tool, setTool] = useState<"pen" | "brush" | "erase" | "crop">("pen");
   const [color, setColor] = useState("#3b82f6");
   const [brushSize, setBrushSize] = useState(6);
   
@@ -31,6 +34,11 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
   const [brightness, setBrightness] = useState(15);
   const [contrast, setContrast] = useState(28);
   const [rotation, setRotation] = useState(0);
+
+  // Snipping Tool Crop Box (inset percentages 0-100)
+  const [cropBox, setCropBox] = useState({ top: 0, left: 0, right: 0, bottom: 0 });
+  const [activeHandle, setActiveHandle] = useState<string | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number; initialBox: typeof cropBox } | null>(null);
 
   // Sidebar Text Annotation state
   const [captionText, setCaptionText] = useState("Golden Hour View");
@@ -117,6 +125,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (activeHandle) return;
     const coords = getCanvasCoords(e);
     saveState();
     isDrawingRef.current = true;
@@ -124,7 +133,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawingRef.current) return;
+    if (!isDrawingRef.current || activeHandle) return;
     const coords = getCanvasCoords(e);
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -156,7 +165,57 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
   const handleMouseUp = () => {
     isDrawingRef.current = false;
     lastPosRef.current = null;
+    if (activeHandle) setActiveHandle(null);
   };
+
+  // Dragging Snipping Tool Handles
+  const startHandleDrag = (handle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveHandle(handle);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initialBox: { ...cropBox },
+    };
+  };
+
+  const handleGlobalMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!activeHandle || !dragStartRef.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const deltaX = ((e.clientX - dragStartRef.current.x) / rect.width) * 100;
+      const deltaY = ((e.clientY - dragStartRef.current.y) / rect.height) * 100;
+
+      const initial = dragStartRef.current.initialBox;
+
+      setCropBox(() => {
+        let { top, left, right, bottom } = initial;
+
+        if (activeHandle.includes("n")) top = Math.min(80, Math.max(0, initial.top + deltaY));
+        if (activeHandle.includes("s")) bottom = Math.min(80, Math.max(0, initial.bottom - deltaY));
+        if (activeHandle.includes("w")) left = Math.min(80, Math.max(0, initial.left + deltaX));
+        if (activeHandle.includes("e")) right = Math.min(80, Math.max(0, initial.right - deltaX));
+
+        return { top, left, right, bottom };
+      });
+    },
+    [activeHandle]
+  );
+
+  const handleGlobalMouseUp = useCallback(() => {
+    if (activeHandle) setActiveHandle(null);
+  }, [activeHandle]);
+
+  useEffect(() => {
+    if (activeHandle) {
+      window.addEventListener("mousemove", handleGlobalMouseMove);
+      window.addEventListener("mouseup", handleGlobalMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [activeHandle, handleGlobalMouseMove, handleGlobalMouseUp]);
 
   const handleAddText = () => {
     if (!captionText.trim()) return;
@@ -179,7 +238,32 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    canvas.toBlob(
+    // Create a temporary canvas for cropped output
+    const cropX = (cropBox.left / 100) * canvas.width;
+    const cropY = (cropBox.top / 100) * canvas.height;
+    const cropW = canvas.width * (1 - (cropBox.left + cropBox.right) / 100);
+    const cropH = canvas.height * (1 - (cropBox.top + cropBox.bottom) / 100);
+
+    const outCanvas = document.createElement("canvas");
+    outCanvas.width = Math.max(10, cropW);
+    outCanvas.height = Math.max(10, cropH);
+
+    const outCtx = outCanvas.getContext("2d");
+    if (!outCtx) return;
+
+    outCtx.drawImage(
+      canvas,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+      0,
+      0,
+      outCanvas.width,
+      outCanvas.height
+    );
+
+    outCanvas.toBlob(
       (blob) => {
         if (!blob) return;
         const editedFilename = `edited_${file.name.replace(/\.[^/.]+$/, "")}.png`;
@@ -294,29 +378,84 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
 
             </div>
 
-            {/* Main Canvas Viewport */}
-            <div className="relative flex-1 canvas-grid-bg rounded-xl border border-white/10 flex items-center justify-center p-3 sm:p-6 min-h-[260px] sm:min-h-[320px] overflow-hidden">
-              <div className="relative">
+            {/* Main Canvas Viewport with Snipping Tool Handles */}
+            <div
+              ref={containerRef}
+              className="relative flex-1 canvas-grid-bg rounded-xl border border-white/10 flex items-center justify-center p-3 sm:p-6 min-h-[260px] sm:min-h-[320px] overflow-hidden"
+            >
+              <div className="relative inline-block select-none">
                 <canvas
                   ref={canvasRef}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
-                  className="max-w-full max-h-[38vh] sm:max-h-[44vh] object-contain shadow-2xl cursor-crosshair border border-white/20 rounded-md"
+                  className="max-w-full max-h-[38vh] sm:max-h-[44vh] object-contain shadow-2xl cursor-crosshair border border-white/20 rounded-md block"
                 />
 
-                {/* 8 Blue Handles */}
-                <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
-                
-                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
-                
-                <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
+                {/* Crop Box Overlay Marquee */}
+                <div
+                  className="absolute border-2 border-blue-400 border-dashed pointer-events-none"
+                  style={{
+                    top: `${cropBox.top}%`,
+                    left: `${cropBox.left}%`,
+                    right: `${cropBox.right}%`,
+                    bottom: `${cropBox.bottom}%`,
+                    boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.45)",
+                  }}
+                />
+
+                {/* 8 Blue Snipping Tool Handles */}
+                {/* Top-Left */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("nw", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-nwse-resize z-20 hover:scale-125 transition-transform"
+                  style={{ top: `calc(${cropBox.top}% - 7px)`, left: `calc(${cropBox.left}% - 7px)` }}
+                />
+                {/* Top-Center */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("n", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-ns-resize z-20 hover:scale-125 transition-transform"
+                  style={{ top: `calc(${cropBox.top}% - 7px)`, left: `calc(50% + ${cropBox.left / 2}% - ${cropBox.right / 2}% - 7px)` }}
+                />
+                {/* Top-Right */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("ne", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-nesw-resize z-20 hover:scale-125 transition-transform"
+                  style={{ top: `calc(${cropBox.top}% - 7px)`, right: `calc(${cropBox.right}% - 7px)` }}
+                />
+
+                {/* Middle-Left */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("w", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-ew-resize z-20 hover:scale-125 transition-transform"
+                  style={{ top: `calc(50% + ${cropBox.top / 2}% - ${cropBox.bottom / 2}% - 7px)`, left: `calc(${cropBox.left}% - 7px)` }}
+                />
+                {/* Middle-Right */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("e", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-ew-resize z-20 hover:scale-125 transition-transform"
+                  style={{ top: `calc(50% + ${cropBox.top / 2}% - ${cropBox.bottom / 2}% - 7px)`, right: `calc(${cropBox.right}% - 7px)` }}
+                />
+
+                {/* Bottom-Left */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("sw", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-nesw-resize z-20 hover:scale-125 transition-transform"
+                  style={{ bottom: `calc(${cropBox.bottom}% - 7px)`, left: `calc(${cropBox.left}% - 7px)` }}
+                />
+                {/* Bottom-Center */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("s", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-ns-resize z-20 hover:scale-125 transition-transform"
+                  style={{ bottom: `calc(${cropBox.bottom}% - 7px)`, left: `calc(50% + ${cropBox.left / 2}% - ${cropBox.right / 2}% - 7px)` }}
+                />
+                {/* Bottom-Right */}
+                <div
+                  onMouseDown={(e) => startHandleDrag("se", e)}
+                  className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow cursor-nwse-resize z-20 hover:scale-125 transition-transform"
+                  style={{ bottom: `calc(${cropBox.bottom}% - 7px)`, right: `calc(${cropBox.right}% - 7px)` }}
+                />
               </div>
             </div>
 
@@ -427,7 +566,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
             </div>
 
             <p className="text-[11px] text-slate-500 mt-4">
-              💡 Use Pen &amp; Brush to annotate directly on canvas.
+              💡 Drag 8 handles to crop like Windows Snipping Tool.
             </p>
           </div>
 

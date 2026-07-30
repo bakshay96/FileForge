@@ -153,16 +153,16 @@ export default function HomePage() {
       {/* Footer matching Reference Screenshot 1 */}
       <footer className="border-t border-white/10 py-8 px-6 text-center bg-[#07080c] text-xs text-slate-400">
         <div className="flex flex-wrap items-center justify-center gap-6 mb-4 font-medium text-slate-400">
-          <a href="#" className="hover:text-white transition">About</a>
-          <a href="#" className="hover:text-white transition">Blog</a>
-          <a href="#" className="hover:text-white transition">Support</a>
-          <a href="#" className="hover:text-white transition">Pricing</a>
-          <a href="#" className="hover:text-white transition">API</a>
-          <a href="#" className="hover:text-white transition">Terms</a>
-          <a href="#" className="hover:text-white transition">Privacy</a>
+          <Link href="/about" className="hover:text-cyan-400 transition">About</Link>
+          <Link href="/blog" className="hover:text-cyan-400 transition">Blog</Link>
+          <Link href="/support" className="hover:text-cyan-400 transition">Support</Link>
+          <Link href="/pricing" className="hover:text-cyan-400 transition">Pricing</Link>
+          <Link href="/api-docs" className="hover:text-cyan-400 transition">API</Link>
+          <Link href="/terms" className="hover:text-cyan-400 transition">Terms</Link>
+          <Link href="/privacy" className="hover:text-cyan-400 transition">Privacy</Link>
         </div>
-        <p className="text-slate-500 text-[11px]">
-          © {new Date().getFullYear()} FileForge Inc. All Rights Reserved.
+        <p className="text-slate-500 text-xs">
+          © {new Date().getFullYear()} <span className="text-slate-300 font-semibold">ABTech Solution</span>. All Rights Reserved. Contact: <a href="mailto:care.abtech@gmail.com" className="text-cyan-400 hover:underline">care.abtech@gmail.com</a>
         </p>
       </footer>
     </div>
