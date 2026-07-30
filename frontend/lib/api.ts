@@ -1,11 +1,12 @@
 /**
  * FileForge API Client
- * Axios instance configured to talk to the FastAPI backend via Next.js proxy.
+ * - Local dev: NEXT_PUBLIC_API_URL is empty → Next.js proxy rewrites /api/* to localhost:8000
+ * - Production: NEXT_PUBLIC_API_URL = https://your-backend.onrender.com → calls backend directly
  */
 
 import axios from "axios";
 
-// Base URL — reads NEXT_PUBLIC_API_URL in production (Render), or relative path in dev (Next.js proxy)
+// In dev: "" (proxy handles it). In prod: "https://your-backend.onrender.com"
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const api = axios.create({
@@ -221,8 +222,11 @@ export async function convertPdfToImages(
 
 /**
  * Trigger browser download from a job's download URL.
+ * Works in both dev (proxy) and production (direct backend URL).
  */
 export function triggerDownload(jobId: string, filename: string): void {
+  // In dev: API_BASE_URL is "" so URL is relative → Next.js proxy handles it
+  // In prod: API_BASE_URL is the backend URL → direct call
   const url = `${API_BASE_URL}/api/download/${jobId}`;
   const a = document.createElement("a");
   a.href = url;
