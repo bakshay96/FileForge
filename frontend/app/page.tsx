@@ -1,220 +1,168 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Shield, Zap, Clock, RefreshCw, Crop, FileText, History, UserCheck, Eye, HardDrive, Sparkles } from "lucide-react";
+import { useState } from "react";
+import {
+  Camera,
+  Crop,
+  FileText,
+  Clock,
+  Cloud,
+  HardDrive,
+  FolderArchive,
+  ArrowRight,
+  Upload,
+} from "lucide-react";
 import Navbar from "@/components/Navbar";
-
-const TOOLS = [
-  {
-    icon: RefreshCw,
-    title: "Image Convert",
-    description: "Convert between JPEG, PNG, WebP, GIF, BMP, TIFF and ICO in seconds.",
-    href: "/convert",
-    gradient: "from-blue-500/20 via-blue-500/10 to-transparent",
-    border: "border-blue-500/30 hover:border-blue-400",
-    iconColor: "text-blue-400",
-    iconBg: "bg-blue-500/15 border border-blue-500/30",
-  },
-  {
-    icon: Crop,
-    title: "Image Resize & Canvas",
-    description: "Interactive Canvas editor: Crop, draw pen, scale dimensions, target KB, text watermark & filters.",
-    href: "/resize",
-    gradient: "from-purple-500/20 via-purple-500/10 to-transparent",
-    border: "border-purple-500/30 hover:border-purple-400",
-    iconColor: "text-purple-400",
-    iconBg: "bg-purple-500/15 border border-purple-500/30",
-  },
-  {
-    icon: FileText,
-    title: "PDF Tools & Compression",
-    description: "Compress PDFs with expected target size calculator, or convert pages to images (ZIP).",
-    href: "/pdf",
-    gradient: "from-emerald-500/20 via-emerald-500/10 to-transparent",
-    border: "border-emerald-500/30 hover:border-emerald-400",
-    iconColor: "text-emerald-400",
-    iconBg: "bg-emerald-500/15 border border-emerald-500/30",
-  },
-  {
-    icon: History,
-    title: "History & Server Purge",
-    description: "Track converted documents with UTC Date & Time, live countdown timers, and manual server purge.",
-    href: "/history",
-    gradient: "from-amber-500/20 via-amber-500/10 to-transparent",
-    border: "border-amber-500/30 hover:border-amber-400",
-    iconColor: "text-amber-400",
-    iconBg: "bg-amber-500/15 border border-amber-500/30",
-  },
-];
-
-const FEATURES = [
-  {
-    icon: Shield,
-    title: "Bank-Grade Security",
-    desc: "Real magic-byte MIME validation, UUID filenames, EXIF stripping. No filename tricks sneak past.",
-  },
-  {
-    icon: Zap,
-    title: "Lightning Fast Pipelines",
-    desc: "Pillow + PyMuPDF processing pipelines deliver sub-3-second results for most document files.",
-  },
-  {
-    icon: Clock,
-    title: "Auto-Cleaned Storage",
-    desc: "Files auto-delete in 30 min (anon) or 24 hours (logged-in). One-click manual server purge available.",
-  },
-  {
-    icon: UserCheck,
-    title: "Tiered Account History",
-    desc: "Log in for 24-hour storage and higher rate limits. Anonymous IP mode gets 30 min temporary storage.",
-  },
-];
+import DropZone from "@/components/DropZone";
 
 export default function HomePage() {
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  const handleFileSelected = (file: File) => {
+    // Navigate to convert or resize page with file
+    window.location.href = "/convert";
+  };
+
   return (
-    <div className="min-h-screen text-slate-100" style={{ background: "var(--color-bg)" }}>
+    <div className="min-h-screen text-slate-100 flex flex-col justify-between" style={{ background: "var(--color-bg)" }}>
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
-        {/* Background Ambient Radial Glows */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[450px] bg-gradient-to-r from-brand-500/10 via-purple-500/10 to-pink-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 right-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative pt-36 pb-16 px-6 overflow-hidden text-center">
+        {/* Background Ambient Glow Dots (Matching Reference Screenshot 1) */}
+        <div className="absolute top-1/4 left-1/4 w-3 h-3 rounded-full bg-cyan-400 blur-[1px] opacity-80 animate-pulse" />
+        <div className="absolute top-1/3 right-1/4 w-4 h-4 rounded-full bg-purple-500 blur-[1px] opacity-80 animate-pulse" />
+        <div className="absolute top-1/2 left-1/5 w-2 h-2 rounded-full bg-purple-400 blur-[1px] opacity-60" />
+        <div className="absolute top-1/2 right-1/5 w-3 h-3 rounded-full bg-cyan-300 blur-[1px] opacity-70" />
 
-        <div className="relative max-w-4xl mx-auto text-center">
-          {/* Feature Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-300 text-xs font-medium mb-8 animate-fade-up shadow-lg shadow-brand-500/10">
-            <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-            Interactive Canvas Editor · Google Drive Import · Date &amp; Time Tracking
-          </div>
-
-          {/* Main Headline */}
-          <h1 className="font-display text-5xl md:text-7xl font-extrabold tracking-tight mb-6 animate-fade-up" style={{ fontFamily: "'Outfit', sans-serif" }}>
-            <span className="text-white">Transform &amp; Edit Your</span>
+        <div className="relative max-w-4xl mx-auto">
+          {/* Main Hero Title matching Reference Image 1 */}
+          <h1 className="font-display text-5xl md:text-7xl font-extrabold tracking-tight mb-6" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            <span className="gradient-text-hero">Transform your</span>
             <br />
-            <span className="gradient-text">Files Instantly</span>
+            <span className="gradient-text-hero">files instantly</span>
           </h1>
 
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up">
-            Convert, resize, edit, and compress images &amp; PDFs with enterprise security.
-            Enjoy live inline previews, visual crop/drawing canvas tools, and Google Drive cloud import.
+          <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+            The leading dark-mode platform for all your conversion and editing needs. Fast, secure, and user-friendly.
           </p>
 
-          {/* Action CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-4 animate-fade-up">
-            <Link href="/convert" className="btn-brand px-8 py-4 text-base font-semibold shadow-xl shadow-brand-500/20">
-              Start Converting <ArrowRight className="w-4 h-4 ml-1" />
-            </Link>
-            <Link href="/resize" className="btn-ghost px-7 py-4 text-base font-semibold border border-white/10">
-              Open Canvas Editor
-            </Link>
-          </div>
+          {/* Central Upload Action Pill matching Reference Image 1 */}
+          <div
+            className="inline-flex items-center gap-3 px-8 py-3.5 upload-select-pill cursor-pointer hover:scale-105 transition-all duration-200"
+            onClick={() => {
+              const dropEl = document.getElementById("quick-start-dropzone");
+              if (dropEl) dropEl.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            <span className="text-sm font-bold text-white tracking-wide">Select Files to Upload</span>
+            <div className="flex items-center gap-2.5">
+              {/* Cloud Icon */}
+              <Cloud className="w-5 h-5 text-cyan-400" />
 
-          {/* Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 p-6 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-md animate-fade-up">
-            {[
-              { value: "20 MB", label: "Max Upload Limit" },
-              { value: "10+", label: "Supported Formats" },
-              { value: "Google Drive", label: "Cloud Import" },
-              { value: "24 Hours", label: "Auth History Tier" },
-            ].map(({ value, label }) => (
-              <div key={label} className="text-center p-2">
-                <div className="text-2xl font-bold text-brand-400 font-display" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                  {value}
-                </div>
-                <div className="text-xs text-slate-400 mt-1">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              {/* Google Drive Triangle Logo */}
+              <svg className="w-5 h-5" viewBox="0 0 87.3 78">
+                <path fill="#0066DA" d="M6.6 66.85l16.1-27.9 22 38.1-16.1 7.7z" />
+                <path fill="#00AC47" d="M44.7 77.05l22-38.1 14 24.2-22 38.1z" />
+                <path fill="#EA4335" d="M22.7 38.95l16.1-27.9h44.1l-16.1 27.9z" />
+              </svg>
 
-      {/* Feature Showcase Banner */}
-      <section className="max-w-5xl mx-auto px-6 mb-16">
-        <div className="glass-card p-8 border-brand-500/30 bg-gradient-to-r from-brand-500/10 via-purple-500/10 to-pink-500/10 relative overflow-hidden">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10 text-left">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-brand-500/20 text-brand-300 text-xs font-semibold mb-3">
-                <Sparkles className="w-3.5 h-3.5" /> NEW POWERFUL FEATURES
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                Interactive Canvas, Google Drive Import &amp; Server Purge
-              </h3>
-              <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                Edit image crops, freehand draw, add text watermarks, calculate expected PDF/image compression sizes, and manually purge files from server storage at any time.
-              </p>
+              {/* Dropbox Logo */}
+              <svg className="w-5 h-5" fill="#38bdf8" viewBox="0 0 24 24">
+                <path d="M6 2l6 4-6 4-6-4 6-4zm12 0l6 4-6 4-6-4 6-4zM0 14l6-4 6 4-6 4-6-4zm24 0l-6-4-6 4 6 4 6-4zM6 18.5l6-4 6 4-6 4-6-4z" />
+              </svg>
             </div>
-            <Link href="/convert" className="btn-brand px-6 py-3 text-sm font-semibold flex-shrink-0">
-              Try New Features <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
         </div>
       </section>
 
-      {/* Tools Grid */}
-      <section className="max-w-5xl mx-auto px-6 pb-20">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-slate-100 mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
-            All-in-One File Processing Tools
-          </h2>
-          <p className="text-slate-400 text-sm">Select an operation to convert, edit, or track your documents</p>
-        </div>
+      {/* 4 Glowing Feature Tool Cards matching Reference Screenshot 1 */}
+      <section className="max-w-6xl mx-auto px-6 pb-16 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          
+          {/* Card 1: Image Convert */}
+          <Link href="/convert" className="glow-card-purple p-6 rounded-2xl block group text-left transition-all">
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Camera className="w-7 h-7 text-purple-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+              Image Convert
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Easily convert PNG, JPG, WEBP, SVG to any format. Advanced settings included.
+            </p>
+          </Link>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TOOLS.map(({ icon: Icon, title, description, href, gradient, border, iconColor, iconBg }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`glass-card group p-6 cursor-pointer block bg-gradient-to-b ${gradient} border ${border} hover:shadow-card-hover transition-all duration-300 rounded-2xl`}
-            >
-              <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                <Icon className={`w-6 h-6 ${iconColor}`} />
-              </div>
-              <h3 className="font-bold text-slate-100 text-lg mb-2">{title}</h3>
-              <p className="text-xs text-slate-400 leading-relaxed mb-4">{description}</p>
-              <div className={`flex items-center gap-1.5 text-xs font-semibold ${iconColor}`}>
-                Open tool <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-          ))}
+          {/* Card 2: Resize & Edit */}
+          <Link href="/resize" className="glow-card-purple p-6 rounded-2xl block group text-left transition-all">
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Crop className="w-7 h-7 text-purple-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+              Resize &amp; Edit
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Batch resize, crop, rotate, enhance, and optimize images without quality loss.
+            </p>
+          </Link>
+
+          {/* Card 3: PDF Tools */}
+          <Link href="/pdf" className="glow-card-cyan p-6 rounded-2xl block group text-left transition-all">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <FileText className="w-7 h-7 text-cyan-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+              PDF Tools
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Merge, Split, Compress, Rotate PDF. Convert PDF to 'Word, Excel, JPG, and more.
+            </p>
+          </Link>
+
+          {/* Card 4: Recent Activity */}
+          <Link href="/history" className="glow-card-cyan p-6 rounded-2xl block group text-left transition-all">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Clock className="w-7 h-7 text-cyan-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+              Recent Activity
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Access and manage your conversion history, download links, and saved files.
+            </p>
+          </Link>
+
         </div>
       </section>
 
-      {/* Security & System Features */}
-      <section className="border-t border-white/10 py-20 px-6 bg-black/20">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-center text-slate-200 mb-3" style={{ fontFamily: "'Outfit', sans-serif" }}>
-            Enterprise Security &amp; Auto-Cleaned Storage
-          </h2>
-          <p className="text-center text-slate-400 text-sm mb-12">
-            Every file is isolated, validated via magic bytes, stripped of metadata, and auto-cleaned after expiry.
-          </p>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="glass-card p-5 text-center border-white/5 bg-white/[0.01]">
-                <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Icon className="w-6 h-6 text-brand-400" />
-                </div>
-                <h3 className="font-semibold text-slate-100 text-sm mb-2">{title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
-              </div>
-            ))}
+      {/* Quick Start Drag & Drop Container matching Reference Screenshot 1 */}
+      <section id="quick-start-dropzone" className="max-w-6xl mx-auto px-6 mb-16 w-full">
+        <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-10 text-center shadow-2xl">
+          <h3 className="text-xl font-bold text-white mb-1" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            Quick Start
+          </h3>
+          <p className="text-xs text-slate-400 mb-6">Drag &amp; Drop file upload.</p>
+          
+          <div className="max-w-xl mx-auto">
+            <DropZone onFileSelected={handleFileSelected} label="Drag & Drop file upload" hint="Supports JPG, PNG, WEBP, PDF, SVG up to 20 MB" />
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-8 px-6 text-center bg-black/40">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Zap className="w-4 h-4 text-brand-400" fill="currentColor" />
-          <span className="font-bold text-slate-300" style={{ fontFamily: "'Outfit', sans-serif" }}>
-            File<span className="text-brand-400">Forge</span>
-          </span>
+      {/* Footer matching Reference Screenshot 1 */}
+      <footer className="border-t border-white/10 py-8 px-6 text-center bg-[#07080c] text-xs text-slate-400">
+        <div className="flex flex-wrap items-center justify-center gap-6 mb-4 font-medium text-slate-400">
+          <a href="#" className="hover:text-white transition">About</a>
+          <a href="#" className="hover:text-white transition">Blog</a>
+          <a href="#" className="hover:text-white transition">Support</a>
+          <a href="#" className="hover:text-white transition">Pricing</a>
+          <a href="#" className="hover:text-white transition">API</a>
+          <a href="#" className="hover:text-white transition">Terms</a>
+          <a href="#" className="hover:text-white transition">Privacy</a>
         </div>
-        <p className="text-xs text-slate-500">
-          © {new Date().getFullYear()} FileForge · Multi-Tenant File Processing SaaS Platform
+        <p className="text-slate-500 text-[11px]">
+          © {new Date().getFullYear()} FileForge Inc. All Rights Reserved.
         </p>
       </footer>
     </div>
