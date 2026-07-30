@@ -8,49 +8,52 @@ import FilePreview from "@/components/FilePreview";
 import FormatSelect from "@/components/FormatSelect";
 import ResultPanel from "@/components/ResultPanel";
 import { resizeImage, editImage, JobResponse } from "@/lib/api";
-import { Crop, Sliders, Move, History } from "lucide-react";
+import { Crop, Move, Sliders, History, Sparkles } from "lucide-react";
 
 type Mode = "resize-dim" | "resize-kb" | "edit";
 
 const ACCEPT_IMAGE = {
   "image/jpeg": [".jpg", ".jpeg"],
-  "image/png":  [".png"],
+  "image/png": [".png"],
   "image/webp": [".webp"],
-  "image/gif":  [".gif"],
-  "image/bmp":  [".bmp"],
+  "image/gif": [".gif"],
+  "image/bmp": [".bmp"],
+  "image/tiff": [".tiff"],
 };
 
-const IMAGE_FORMATS = [
-  { value: "jpg",  label: "JPEG (.jpg)" },
-  { value: "png",  label: "PNG (.png)" },
+const FORMAT_OPTIONS = [
+  { value: "jpg", label: "JPEG (.jpg)" },
+  { value: "png", label: "PNG (.png)" },
   { value: "webp", label: "WebP (.webp)" },
-  { value: "bmp",  label: "BMP (.bmp)" },
+  { value: "gif", label: "GIF (.gif)" },
+  { value: "bmp", label: "BMP (.bmp)" },
+  { value: "tiff", label: "TIFF (.tiff)" },
 ];
 
 const FILTER_FORMATS = [
-  { value: "",          label: "None (Default)" },
+  { value: "", label: "None (Original)" },
   { value: "grayscale", label: "Grayscale" },
-  { value: "blur",      label: "Blur Effect" },
-  { value: "sharpen",   label: "Sharpen" },
-  { value: "contour",   label: "Contour" },
-  { value: "emboss",    label: "Emboss" },
+  { value: "blur", label: "Blur" },
+  { value: "sharpen", label: "Sharpen" },
+  { value: "contour", label: "Contour Outlines" },
+  { value: "emboss", label: "3D Emboss" },
 ];
 
 export default function ResizePage() {
-  const [file,       setFile]       = useState<File | null>(null);
-  const [mode,       setMode]       = useState<Mode>("resize-dim");
-  const [format,     setFormat]     = useState("jpg");
-  const [width,      setWidth]      = useState("");
-  const [height,     setHeight]     = useState("");
-  const [targetKb,   setTargetKb]   = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<Mode>("resize-dim");
+  const [format, setFormat] = useState("jpg");
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+  const [targetKb, setTargetKb] = useState("");
   const [compressionPercent, setCompressionPercent] = useState(50);
-  const [quality,    setQuality]    = useState(85);
-  const [filter,     setFilter]     = useState("");
-  const [rotate,     setRotate]     = useState("");
-  const [progress,   setProgress]   = useState(0);
+  const [quality, setQuality] = useState(85);
+  const [filter, setFilter] = useState("");
+  const [rotate, setRotate] = useState("");
+  const [progress, setProgress] = useState(0);
   const [processing, setProcessing] = useState(false);
-  const [result,     setResult]     = useState<JobResponse | null>(null);
-  const [error,      setError]      = useState<string | null>(null);
+  const [result, setResult] = useState<JobResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!file) return;
@@ -63,21 +66,29 @@ export default function ResizePage() {
       let job: JobResponse;
 
       if (mode === "resize-dim") {
+        // If neither width nor height is provided, default to undefined so original scale is used
+        const wVal = width.trim() ? parseInt(width) : undefined;
+        const hVal = height.trim() ? parseInt(height) : undefined;
+
         job = await resizeImage(
           file,
           {
             outputFormat: format,
-            width: width ? parseInt(width) : undefined,
-            height: height ? parseInt(height) : undefined,
+            width: wVal,
+            height: hVal,
             maintainAspect: true,
             quality,
           },
           setProgress
         );
       } else if (mode === "resize-kb") {
+        const kbVal = targetKb.trim()
+          ? parseInt(targetKb)
+          : Math.max(10, Math.round((file.size / 1024) * (1 - compressionPercent / 100)));
+
         job = await resizeImage(
           file,
-          { outputFormat: format, targetKb: parseInt(targetKb), quality },
+          { outputFormat: format, targetKb: kbVal, quality },
           setProgress
         );
       } else {
@@ -95,8 +106,9 @@ export default function ResizePage() {
 
       setResult(job);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail ?? "Operation failed.";
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        "Operation failed.";
       setError(msg);
     } finally {
       setProcessing(false);
@@ -104,95 +116,117 @@ export default function ResizePage() {
   };
 
   const modeButtons: { id: Mode; icon: typeof Crop; label: string }[] = [
-    { id: "resize-dim", icon: Move,    label: "Resize (px)" },
-    { id: "resize-kb",  icon: Sliders, label: "Compress (KB)" },
-    { id: "edit",       icon: Crop,    label: "Edit & Filters" },
+    { id: "resize-dim", icon: Move, label: "Resize (px)" },
+    { id: "resize-kb", icon: Sliders, label: "Compress (KB)" },
+    { id: "edit", icon: Crop, label: "Edit & Filters" },
   ];
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-bg)" }}>
       <Navbar />
-      <main className="max-w-2xl mx-auto px-6 pt-28 pb-20">
-
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-20">
+        
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl
-                          bg-purple-500/10 border border-purple-500/20 mb-5 mx-auto">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 mb-4 mx-auto">
             <Crop className="w-7 h-7 text-purple-400" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2"
-              style={{ fontFamily: "'Outfit', sans-serif" }}>
-            Resize, Compress & Edit
+          <h1 className="text-3xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            Resize, Compress &amp; Edit
           </h1>
           <p className="text-slate-400 text-sm">
-            Resize pixel dimensions, hit exact target KB sizes with binary-search compression, or apply filters and rotation.
+            Resize pixel dimensions, compress to target KB limits, or draw &amp; crop on interactive canvas.
           </p>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-6">
           {/* Mode tabs */}
           <div className="glass-card p-2 flex gap-1">
             {modeButtons.map(({ id, icon: Icon, label }) => (
               <button
                 key={id}
-                onClick={() => { setMode(id); setResult(null); setError(null); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
-                            text-sm font-medium transition-all duration-200
-                            ${mode === id
-                              ? "bg-brand-500/20 text-brand-300 border border-brand-500/30"
-                              : "text-slate-500 hover:text-slate-300"
-                            }`}
+                onClick={() => {
+                  setMode(id);
+                  setResult(null);
+                  setError(null);
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 ${
+                  mode === id
+                    ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
               >
-                <Icon className="w-4 h-4" />{label}
+                <Icon className="w-4 h-4" />
+                {label}
               </button>
             ))}
           </div>
 
-          {/* Drop zone */}
+          {/* Upload Zone */}
           <div className="glass-card p-5">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-              Upload Image
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+              1. Upload Image
             </p>
             <DropZone onFileSelected={setFile} accept={ACCEPT_IMAGE} />
             {file && <FilePreview file={file} onFileEdited={setFile} />}
           </div>
 
-          {/* Options */}
-          <div className="glass-card p-5 space-y-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Options</p>
+          {/* Options Card */}
+          <div className="glass-card p-5 space-y-5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              2. Options &amp; Settings
+            </p>
 
-            {/* Output format */}
-            <div>
-              <FormatSelect
-                label="Output Format"
-                value={format}
-                options={IMAGE_FORMATS}
-                onChange={setFormat}
-              />
-            </div>
+            {/* Output Format */}
+            <FormatSelect
+              label="Output Image Format"
+              value={format}
+              options={FORMAT_OPTIONS}
+              onChange={setFormat}
+            />
 
-            {/* Mode-specific inputs */}
+            {/* Mode 1: Resize Dimensions */}
             {mode === "resize-dim" && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Width (px)</label>
-                  <input className="forge-input" type="number" placeholder="e.g. 1920"
-                         value={width} onChange={(e) => setWidth(e.target.value)} />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-slate-300 mb-1.5 block font-medium">
+                      Width (px) <span className="text-slate-500 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      className="forge-input font-mono text-xs"
+                      type="number"
+                      placeholder="e.g. 1920 (leave empty for auto)"
+                      value={width}
+                      onChange={(e) => setWidth(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-300 mb-1.5 block font-medium">
+                      Height (px) <span className="text-slate-500 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      className="forge-input font-mono text-xs"
+                      type="number"
+                      placeholder="e.g. 1080 (leave empty for auto)"
+                      value={height}
+                      onChange={(e) => setHeight(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Height (px)</label>
-                  <input className="forge-input" type="number" placeholder="e.g. 1080"
-                         value={height} onChange={(e) => setHeight(e.target.value)} />
-                </div>
+                <p className="text-[11px] text-purple-400/90">
+                  💡 Neither width nor height is mandatory. Entering one dimension automatically calculates the other maintaining original aspect ratio.
+                </p>
               </div>
             )}
 
+            {/* Mode 2: Target KB Compression */}
             {mode === "resize-kb" && (
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-xs text-slate-400 font-medium">
-                      Desired Compression Level:{" "}
+                    <label className="text-xs text-slate-300 font-medium">
+                      Target Compression Ratio:{" "}
                       <span className="text-purple-400 font-mono font-bold">{compressionPercent}% Reduction</span>
                     </label>
                   </div>
@@ -217,7 +251,9 @@ export default function ResizePage() {
                   <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3.5 text-xs text-left">
                     <div className="flex items-center justify-between font-medium text-slate-300 mb-1">
                       <span>Original Image Size:</span>
-                      <span className="font-mono text-slate-200 font-bold">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                      <span className="font-mono text-slate-200 font-bold">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
                     </div>
                     <div className="flex items-center justify-between font-medium text-purple-300">
                       <span>Expected Target Size:</span>
@@ -225,15 +261,13 @@ export default function ResizePage() {
                         ~{((file.size * (1 - compressionPercent / 100)) / (1024 * 1024)).toFixed(2)} MB
                       </span>
                     </div>
-                    <div className="mt-1 text-[11px] text-slate-400 border-t border-purple-500/10 pt-1 flex justify-between">
-                      <span>Est. Reduction: ~{compressionPercent}%</span>
-                      <span>Est. Saved: ~{((file.size * (compressionPercent / 100)) / (1024 * 1024)).toFixed(2)} MB</span>
-                    </div>
                   </div>
                 )}
 
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Target Size (KB) — optional override</label>
+                  <label className="text-xs text-slate-300 mb-1.5 block font-medium">
+                    Manual Target Size (KB) <span className="text-slate-500 font-normal">(optional override)</span>
+                  </label>
                   <input
                     className="forge-input font-mono text-xs"
                     type="number"
@@ -245,12 +279,18 @@ export default function ResizePage() {
               </div>
             )}
 
+            {/* Mode 3: Edit & Filters */}
             {mode === "edit" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Rotate (°)</label>
-                  <input className="forge-input" type="number" placeholder="e.g. 90 or -45"
-                         value={rotate} onChange={(e) => setRotate(e.target.value)} />
+                  <label className="text-xs text-slate-300 mb-1.5 block font-medium">Rotate (°)</label>
+                  <input
+                    className="forge-input text-xs"
+                    type="number"
+                    placeholder="e.g. 90 or -45"
+                    value={rotate}
+                    onChange={(e) => setRotate(e.target.value)}
+                  />
                 </div>
                 <div>
                   <FormatSelect
@@ -263,40 +303,47 @@ export default function ResizePage() {
               </div>
             )}
 
-            {/* Quality slider */}
+            {/* Quality Slider */}
             {mode !== "resize-kb" && (
               <div>
-                <label className="text-xs text-slate-400 mb-1.5 block font-medium">
-                  Quality: <span className="text-brand-400 font-mono font-bold">{quality}%</span>
+                <label className="text-xs text-slate-300 mb-1.5 block font-medium">
+                  Compression Quality: <span className="text-purple-400 font-mono font-bold">{quality}%</span>
                 </label>
-                <input type="range" min={1} max={95} value={quality}
-                       onChange={(e) => setQuality(Number(e.target.value))}
-                       className="w-full accent-brand-500 cursor-pointer mt-1" />
+                <input
+                  type="range"
+                  min={10}
+                  max={95}
+                  value={quality}
+                  onChange={(e) => setQuality(Number(e.target.value))}
+                  className="w-full accent-purple-500 cursor-pointer mt-1"
+                />
               </div>
             )}
           </div>
 
           {error && (
-            <div className="glass-card border-red-500/30 p-4 text-sm text-red-400">⚠️ {error}</div>
+            <div className="glass-card border-red-500/30 p-4 text-sm text-red-400">
+              ⚠️ {error}
+            </div>
           )}
 
+          {/* Action Submit Button - Always cleanly visible and full width */}
           <button
             onClick={handleSubmit}
             disabled={!file || processing}
-            className="btn-brand w-full py-3.5 text-sm font-semibold"
+            className="btn-brand w-full py-4 text-sm font-bold shadow-xl shadow-purple-500/20 disabled:opacity-50"
           >
-            {processing ? "Processing…" : "Process Image"}
+            {processing ? "Processing Image…" : "Resize & Process Image"}
           </button>
 
+          {/* Result Panel Modal */}
           {result && (
-            <div>
-              <ResultPanel job={result} uploadProgress={progress} isProcessing={processing} />
-              <div className="mt-3 text-center">
-                <Link href="/history" className="text-xs text-brand-400 hover:underline inline-flex items-center gap-1">
-                  <History className="w-3.5 h-3.5" /> View all active conversions & countdown timers
-                </Link>
-              </div>
-            </div>
+            <ResultPanel
+              job={result}
+              uploadProgress={progress}
+              isProcessing={processing}
+              onClose={() => setResult(null)}
+            />
           )}
         </div>
       </main>

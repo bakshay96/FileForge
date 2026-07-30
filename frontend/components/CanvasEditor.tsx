@@ -3,13 +3,11 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
   RotateCw,
-  Type,
   Pencil,
   Paintbrush,
   Eraser,
   X,
   Zap,
-  ChevronDown,
   Sun,
   Contrast as ContrastIcon,
 } from "lucide-react";
@@ -75,7 +73,6 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // CSS filter values: 100 + brightness, 100 + contrast
     const brightnessVal = 100 + brightness;
     const contrastVal = 100 + contrast;
     ctx.filter = `brightness(${brightnessVal}%) contrast(${contrastVal}%)`;
@@ -161,7 +158,6 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     lastPosRef.current = null;
   };
 
-  // Stamp Text from Sidebar onto Canvas
   const handleAddText = () => {
     if (!captionText.trim()) return;
     saveState();
@@ -198,13 +194,13 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
   const COLOR_PALETTE = ["#3b82f6", "#ef4444", "#eab308", "#22c55e", "#ffffff"];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      {/* Modal Shell matching Reference Image 2 */}
-      <div className="bg-[#0f1117] border border-white/10 rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      {/* Modal Shell with responsive max-height */}
+      <div className="bg-[#0f1117] border border-white/10 rounded-2xl w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden shadow-2xl my-auto">
         
-        {/* Modal Header matching Reference Image 2 */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131620]">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+        {/* Modal Header */}
+        <div className="p-3 sm:p-4 border-b border-white/10 flex items-center justify-between bg-[#131620] flex-shrink-0">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-300">
             <div className="w-5 h-5 rounded bg-gradient-to-r from-cyan-400 to-indigo-500 flex items-center justify-center">
               <Zap className="w-3 h-3 text-white" fill="currentColor" />
             </div>
@@ -213,16 +209,16 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
             <span className="text-white font-bold">Image Editor</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={handleSave}
-              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition"
+              className="px-3 sm:px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition"
             >
               Save Changes
             </button>
             <button
               onClick={onCancel}
-              className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition"
+              className="px-3 sm:px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition"
             >
               Cancel
             </button>
@@ -232,20 +228,20 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
           </div>
         </div>
 
-        {/* Editor Body Grid: Main Viewport Left + Text Annotation Sidebar Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 flex-1">
+        {/* Editor Body Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 flex-1 overflow-y-auto">
           
           {/* Main Viewport Column (3 cols) */}
-          <div className="lg:col-span-3 border-r border-white/10 p-4 flex flex-col justify-between">
+          <div className="lg:col-span-3 border-r border-white/10 p-3 sm:p-4 flex flex-col justify-between space-y-4">
             
-            {/* Top Toolbar Sub-Bar matching Reference Image 2 */}
-            <div className="bg-[#151822] border border-white/10 rounded-xl p-2 mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+            {/* Top Toolbar Sub-Bar */}
+            <div className="bg-[#151822] border border-white/10 rounded-xl p-2 flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0">
               
-              {/* Tool selector: Pen, Brush, Erase */}
+              {/* Tool selector */}
               <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg">
                 <button
                   onClick={() => setTool("pen")}
-                  className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition ${
+                  className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 font-medium transition ${
                     tool === "pen" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -253,7 +249,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                 </button>
                 <button
                   onClick={() => setTool("brush")}
-                  className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition ${
+                  className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 font-medium transition ${
                     tool === "brush" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -261,7 +257,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                 </button>
                 <button
                   onClick={() => setTool("erase")}
-                  className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 font-medium transition ${
+                  className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 font-medium transition ${
                     tool === "erase" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -275,7 +271,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                   <button
                     key={c}
                     onClick={() => setColor(c)}
-                    className={`w-5 h-5 rounded-full border border-white/20 transition ${
+                    className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-white/20 transition ${
                       color === c ? "scale-125 ring-2 ring-blue-400" : ""
                     }`}
                     style={{ backgroundColor: c }}
@@ -292,14 +288,14 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                   max={25}
                   value={brushSize}
                   onChange={(e) => setBrushSize(Number(e.target.value))}
-                  className="w-28 accent-blue-500 cursor-pointer"
+                  className="w-24 sm:w-28 accent-blue-500 cursor-pointer"
                 />
               </div>
 
             </div>
 
-            {/* Main Canvas Viewport with Grid Pattern & 8 Blue Handles matching Image 2 */}
-            <div className="relative flex-1 canvas-grid-bg rounded-xl border border-white/10 flex items-center justify-center p-6 min-h-[320px] overflow-hidden">
+            {/* Main Canvas Viewport */}
+            <div className="relative flex-1 canvas-grid-bg rounded-xl border border-white/10 flex items-center justify-center p-3 sm:p-6 min-h-[260px] sm:min-h-[320px] overflow-hidden">
               <div className="relative">
                 <canvas
                   ref={canvasRef}
@@ -307,25 +303,25 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
-                  className="max-w-full max-h-[48vh] object-contain shadow-2xl cursor-crosshair border border-white/20 rounded-md"
+                  className="max-w-full max-h-[38vh] sm:max-h-[44vh] object-contain shadow-2xl cursor-crosshair border border-white/20 rounded-md"
                 />
 
-                {/* 8 Blue Round Handles matching Reference Image 2 */}
-                <div className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                {/* 8 Blue Handles */}
+                <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
                 
-                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
                 
-                <div className="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
-                <div className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
+                <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white shadow" />
               </div>
             </div>
 
-            {/* Bottom 3 Cards matching Reference Image 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            {/* Bottom 3 Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-shrink-0">
               
               {/* Card 1: Rotate 90° */}
               <button
@@ -335,7 +331,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                 <RotateCw className="w-4 h-4 text-blue-400" /> Rotate 90°
               </button>
 
-              {/* Card 2: Brightness Slider (-100 to +100) */}
+              {/* Card 2: Brightness Slider */}
               <div className="bg-[#151822] border border-white/10 rounded-xl p-3 text-left">
                 <div className="flex justify-between items-center text-xs text-slate-300 font-medium mb-1.5">
                   <span className="flex items-center gap-1.5">
@@ -351,13 +347,9 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                   onChange={(e) => setBrightness(Number(e.target.value))}
                   className="w-full accent-blue-500 cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
-                  <span>-100</span>
-                  <span>+100</span>
-                </div>
               </div>
 
-              {/* Card 3: Contrast Slider (-100 to +100) */}
+              {/* Card 3: Contrast Slider */}
               <div className="bg-[#151822] border border-white/10 rounded-xl p-3 text-left">
                 <div className="flex justify-between items-center text-xs text-slate-300 font-medium mb-1.5">
                   <span className="flex items-center gap-1.5">
@@ -373,34 +365,28 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                   onChange={(e) => setContrast(Number(e.target.value))}
                   className="w-full accent-blue-500 cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
-                  <span>-100</span>
-                  <span>+100</span>
-                </div>
               </div>
 
             </div>
 
           </div>
 
-          {/* Right Sidebar Column matching Reference Image 2 */}
-          <div className="p-4 bg-[#11141d] flex flex-col justify-between text-left">
+          {/* Right Sidebar Column */}
+          <div className="p-4 bg-[#11141d] flex flex-col justify-between text-left border-t lg:border-t-0 border-white/10">
             <div>
               <h4 className="text-sm font-bold text-slate-200 mb-1" style={{ fontFamily: "'Outfit', sans-serif" }}>
                 Text Annotation
               </h4>
-              <p className="text-xs text-slate-400 mb-4">Add caption here...</p>
+              <p className="text-xs text-slate-400 mb-3">Add caption here...</p>
 
-              {/* Caption Textarea matching Image 2 */}
               <textarea
                 value={captionText}
                 onChange={(e) => setCaptionText(e.target.value)}
                 placeholder="Type caption..."
-                className="w-full h-24 bg-[#181b26] border border-white/10 rounded-xl p-3 text-xs text-slate-200 focus:border-blue-500 outline-none resize-none mb-4"
+                className="w-full h-20 bg-[#181b26] border border-white/10 rounded-xl p-3 text-xs text-slate-200 focus:border-blue-500 outline-none resize-none mb-3"
               />
 
-              {/* Controls Row: Font, Size, Color matching Image 2 */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 <select
                   value={fontFamily}
                   onChange={(e) => setFontFamily(e.target.value)}
@@ -422,7 +408,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                   <option value={24}>24px</option>
                 </select>
 
-                <div className="bg-[#181b26] border border-white/10 rounded-lg p-1.5 flex items-center justify-center">
+                <div className="bg-[#181b26] border border-white/10 rounded-lg p-1 flex items-center justify-center">
                   <input
                     type="color"
                     value={color}
@@ -432,7 +418,6 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
                 </div>
               </div>
 
-              {/* Add Text Button matching Image 2 */}
               <button
                 onClick={handleAddText}
                 className="w-full py-2.5 rounded-xl bg-[#262c3d] hover:bg-[#32394f] text-slate-200 font-semibold text-xs transition"
@@ -441,7 +426,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-500 mt-6">
+            <p className="text-[11px] text-slate-500 mt-4">
               💡 Use Pen &amp; Brush to annotate directly on canvas.
             </p>
           </div>
