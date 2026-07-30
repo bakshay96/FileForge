@@ -5,8 +5,8 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import CountdownTimer from "@/components/CountdownTimer";
 import { useAuth } from "@/lib/auth";
-import { getHistory, HistoryItem, triggerDownload } from "@/lib/api";
-import { History, FileDown, Clock, ShieldAlert, Sparkles, RefreshCw } from "lucide-react";
+import { getHistory, HistoryItem, triggerDownload, deleteJob } from "@/lib/api";
+import { History, FileDown, Clock, ShieldAlert, Sparkles, RefreshCw, Trash2 } from "lucide-react";
 
 export default function HistoryPage() {
   const { user } = useAuth();
@@ -27,6 +27,22 @@ export default function HistoryPage() {
       console.error("Failed to load history:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteItem = async (jobId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this file from the server storage?")) {
+      return;
+    }
+    try {
+      await deleteJob(jobId);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.job_id === jobId ? { ...item, file_available: false, is_expired: true } : item
+        )
+      );
+    } catch (err) {
+      alert("Failed to delete file.");
     }
   };
 
@@ -132,14 +148,23 @@ export default function HistoryPage() {
                     {item.expires_at && <CountdownTimer expiresAt={item.expires_at} />}
 
                     {item.file_available && item.output_filename ? (
-                      <button
-                        onClick={() => triggerDownload(item.job_id, item.output_filename!)}
-                        className="btn-brand px-3 py-1.5 text-xs gap-1.5"
-                      >
-                        <FileDown className="w-3.5 h-3.5" /> Download
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => triggerDownload(item.job_id, item.output_filename!)}
+                          className="btn-brand px-3 py-1.5 text-xs gap-1.5"
+                        >
+                          <FileDown className="w-3.5 h-3.5" /> Download
+                        </button>
+                        <button
+                          onClick={() => handleDeleteItem(item.job_id)}
+                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition"
+                          title="Purge file from server"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ) : (
-                      <span className="text-xs text-slate-600 italic">Unavailable</span>
+                      <span className="text-xs text-slate-600 italic">Unavailable / Deleted</span>
                     )}
                   </div>
                 </div>

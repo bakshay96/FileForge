@@ -226,6 +226,111 @@ async def download_file(job_id: str):
     )
 
 
+# ── Inline Preview Endpoint ───────────────────────────────────────────────────
+
+
+@app.get(
+    "/api/preview/{job_id}",
+    summary="Preview processed file inline",
+    description="Serve the processed output file with inline disposition for in-browser image/file preview.",
+    tags=["Downloads"],
+)
+async def preview_file(job_id: str):
+    """
+    Serve processed file inline for browser image/file preview tags.
+    Does not force download attachment header.
+    """
+    db = await get_database()
+    job_doc = await db["file_jobs"].find_one({"job_id": job_id})
+
+    if not job_doc or job_doc.get("status") != "completed":
+        raise HTTPException(status_code=404, detail="File preview not available.")
+
+    output_path = Path(job_doc["output_path"])
+    if not output_path.exists():
+        raise HTTPException(status_code=410, detail="File has already been deleted.")
+
+    output_filename = job_doc.get("output_filename", output_path.name)
+    media_type, _ = mimetypes.guess_type(output_filename)
+    media_type = media_type or "application/octet-stream"
+
+    return FileResponse(
+        path=str(output_path),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{output_filename}"',
+            "X-FileForge-Job-Id": job_id,
+        },
+    )
+
+
+# ── Manual File Delete Endpoint ───────────────────────────────────────────────
+
+
+@app.delete(
+    "/api/file/{job_id}",
+    summary="Manually delete file from server",
+    description="Purges input and output files from server storage immediately upon user request.",
+    tags=["Downloads"],
+)
+async def delete_file(job_id: str):
+    """
+    Immediately purge files from server storage and mark job as deleted in DB.
+    """
+    db = await get_database()
+    job_doc = await db["file_jobs"].find_one({"job_id": job_id})
+
+    if not job_doc:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+
+    deleted_paths = []
+
+    # Unlink output path
+    output_path_str = job_doc.get("output_path")
+    if output_path_str:
+        op = Path(output_path_str)
+        if op.exists():
+            try:
+                op.unlink()
+                deleted_paths.append(str(op))
+            except Exception as e:
+                logger.warning(f"Error unlinking {op}: {e}")
+
+    # Unlink input path
+    input_path_str = job_doc.get("input_path")
+    if input_path_str:
+        ip = Path(input_path_str)
+        if ip.exists():
+            try:
+                ip.unlink()
+                deleted_paths.append(str(ip))
+            except Exception as e:
+                logger.warning(f"Error unlinking {ip}: {e}")
+
+    # Update MongoDB job record
+    now = datetime.now(timezone.utc)
+    await db["file_jobs"].update_one(
+        {"job_id": job_id},
+        {
+            "$set": {
+                "status": "deleted",
+                "file_available": False,
+                "deleted_at": now,
+            }
+        },
+    )
+
+    logger.info(f"Manually purged job={job_id}, files={deleted_paths}")
+
+    return {
+        "status": "deleted",
+        "job_id": job_id,
+        "message": "File successfully purged from server storage.",
+        "deleted_files_count": len(deleted_paths),
+    }
+
+
+
 # ── Health Check ──────────────────────────────────────────────────────────────
 
 

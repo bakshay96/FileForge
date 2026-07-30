@@ -1,0 +1,101 @@
+[33mcommit 304d376eb388fcf8a8e337c77e1ba1389823ed6f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Thu Jul 30 05:49:31 2026 +0530
+
+    fix: add build.sh with explicit venv creation for Render deployment
+
+[33mcommit 08bef9bbf3f914d22ff35a6e488a2d1afd91160d[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 10:58:58 2026 +0530
+
+    feat: add step-by-step startup logs with all systems go banner
+
+[33mcommit 5ee76f5e60aa54de7427eb62bffd4b301e81cc71[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 10:45:12 2026 +0530
+
+    chore: remove unused deployment files (render.yaml, netlify.toml, Dockerfile, run.py)
+
+[33mcommit a9e291ee79f05dc4c1498cb01122d7d27dc69d27[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 09:22:33 2026 +0530
+
+    chore: remove .env.example files from git tracking
+
+[33mcommit 644ab8f952641ca47bc41af2735eb82bdd3fa381[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 09:21:14 2026 +0530
+
+    security: add .env.example files, harden JWT secret, clean up .env
+
+[33mcommit eb8cb0110546b3aae53c9a9f13a2d51a03e863a7[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 09:16:58 2026 +0530
+
+    refactor: clean up codebase for simple local development
+
+[33mcommit b8ba8c1eec2c4bdeb05a901ca5d8d8b14c488d28[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 09:11:50 2026 +0530
+
+    fix: safeguard module-level tmp_dir creation in settings.py
+
+[33mcommit f95258c2ef68373175b9a914a855374d2c0e335e[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 09:09:31 2026 +0530
+
+    fix: finalize render.yaml settings for automatic background deployment
+
+[33mcommit 491df0b2d3ace5b17b3160b05e202caac43e2c6f[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 08:58:37 2026 +0530
+
+    fix: make MongoDB connection non-blocking during startup to allow instant port binding on Render
+
+[33mcommit 74db1620e81b131f73bb30c62a4b4a56e2455f9d[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 08:54:51 2026 +0530
+
+    fix: update render.yaml startCommand to use ./.venv/bin/uvicorn executable
+
+[33mcommit cb7ddb3f37db305b28d8d906d634470cde96cd64[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 08:34:31 2026 +0530
+
+    feat: add automated Render deployment script deploy_render.py
+
+[33mcommit 23a6cbe19f5916d99a0da63b2db2ce12555f025d[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 08:20:09 2026 +0530
+
+    feat: add python run.py launcher, Dockerfile, and dynamic Next.js API proxy rewrite for Netlify & Render deployment
+
+[33mcommit 4003c30a03bcab1b80af9bb6440cd3a0743f7589[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Wed Jul 29 08:13:04 2026 +0530
+
+    setup update deplaoyment
+
+[33mcommit cf91a00b51947552dfd208b7718825e357370c3b[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Mon Jul 27 12:47:35 2026 +0530
+
+    fix: update startCommand to python -m uvicorn for Render deployment
+
+[33mcommit 1d1509f031d89647fc480b71e6139b51666731a4[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Mon Jul 27 12:30:55 2026 +0530
+
+    fix: set Python version to 3.11.9 for Render wheel compatibility
+
+[33mcommit 88fe05aacc4521a3e14be1cc298852d32e7f408a[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Mon Jul 27 12:25:48 2026 +0530
+
+    fix: update Render build command and fallback MIME detection for cloud environment
+
+[33mcommit f74f3c2c861344ee653a4598948e2362150107c4[m
+Author: bakshay96 <akshaymali.edu@gmail.com>
+Date:   Mon Jul 27 10:12:03 2026 +0530
+
+    feat: complete FileForge web app with Auth, History, live timers, and deployment configs

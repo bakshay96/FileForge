@@ -91,7 +91,7 @@ export default function ConvertPage() {
               label="Drop your image here"
               hint="JPEG, PNG, WebP, GIF, BMP, TIFF · Max 20 MB"
             />
-            {file && <FilePreview file={file} />}
+            {file && <FilePreview file={file} onFileEdited={setFile} />}
           </div>
 
           {/* Options */}

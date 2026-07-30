@@ -153,7 +153,7 @@ export default function ResizePage() {
               Upload Image
             </p>
             <DropZone onFileSelected={setFile} accept={ACCEPT_IMAGE} />
-            {file && <FilePreview file={file} />}
+            {file && <FilePreview file={file} onFileEdited={setFile} />}
           </div>
 
           {/* Options */}

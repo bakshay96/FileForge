@@ -218,15 +218,13 @@ export async function convertPdfToImages(
   return data;
 }
 
-// ── Download ───────────────────────────────────────────────────────────────
+// ── Download & File Management ─────────────────────────────────────────────
 
 /**
  * Trigger browser download from a job's download URL.
  * Works in both dev (proxy) and production (direct backend URL).
  */
 export function triggerDownload(jobId: string, filename: string): void {
-  // In dev: API_BASE_URL is "" so URL is relative → Next.js proxy handles it
-  // In prod: API_BASE_URL is the backend URL → direct call
   const url = `${API_BASE_URL}/api/download/${jobId}`;
   const a = document.createElement("a");
   a.href = url;
@@ -234,6 +232,21 @@ export function triggerDownload(jobId: string, filename: string): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+/**
+ * Get preview URL for inline browser display.
+ */
+export function getPreviewUrl(jobId: string): string {
+  return `${API_BASE_URL}/api/preview/${jobId}`;
+}
+
+/**
+ * Delete a job file from server storage manually.
+ */
+export async function deleteJob(jobId: string): Promise<{ status: string; message: string }> {
+  const { data } = await api.delete<{ status: string; message: string }>(`/api/file/${jobId}`);
+  return data;
 }
 
 export default api;
