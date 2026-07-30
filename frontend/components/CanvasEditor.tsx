@@ -20,6 +20,11 @@ import {
   Square,
   Circle,
   Type,
+  Download,
+  Check,
+  Move,
+  Crop,
+  Star,
 } from "lucide-react";
 
 interface CanvasEditorProps {
@@ -28,63 +33,75 @@ interface CanvasEditorProps {
   onCancel: () => void;
 }
 
+const COLOR_PALETTE = [
+  "#3b82f6",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#a855f7",
+  "#ffffff",
+  "#000000",
+];
+
+const FILTER_PRESETS = [
+  { value: "none", label: "Original" },
+  { value: "grayscale", label: "Grayscale" },
+  { value: "sepia", label: "Sepia Vintage" },
+  { value: "warm", label: "Warm Film" },
+  { value: "cool", label: "Cool Breeze" },
+  { value: "invert", label: "Invert Colors" },
+  { value: "vivid", label: "Vivid Boost" },
+];
+
 export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
-  // Tools: 'pen' | 'brush' | 'erase' | 'rect' | 'circle'
   const [tool, setTool] = useState<"pen" | "brush" | "erase" | "rect" | "circle">("pen");
   const [color, setColor] = useState("#3b82f6");
   const [brushSize, setBrushSize] = useState(6);
 
-  // Adjustments & Transforms
-  const [brightness, setBrightness] = useState(15);
-  const [contrast, setContrast] = useState(28);
+  const [brightness, setBrightness] = useState(0);
+  const [contrast, setContrast] = useState(0);
+  const [saturation, setSaturation] = useState(0);
   const [rotation, setRotation] = useState(0);
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [filterPreset, setFilterPreset] = useState<"none" | "grayscale" | "sepia" | "invert" | "warm">("none");
+  const [filterPreset, setFilterPreset] = useState<"none" | "grayscale" | "sepia" | "invert" | "warm" | "cool" | "vivid">("none");
 
-  // Snipping Tool Crop Box (inset percentages 0-100)
   const [cropBox, setCropBox] = useState({ top: 0, left: 0, right: 0, bottom: 0 });
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; initialBox: typeof cropBox } | null>(null);
 
-  // Sidebar Text Annotation state
-  const [captionText, setCaptionText] = useState("Golden Hour View");
+  const [captionText, setCaptionText] = useState("");
   const [fontFamily, setFontFamily] = useState("Inter");
-  const [fontSize, setFontSize] = useState(16);
+  const [fontSize, setFontSize] = useState(24);
 
-  // History stack for undo
   const [history, setHistory] = useState<ImageData[]>([]);
+  const [saved, setSaved] = useState(false);
 
-  // Drawing state
   const isDrawingRef = useRef(false);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Load Image File
+  // ── Load Image ──────────────────────────────────────────────
   useEffect(() => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => {
-      setImageObj(img);
-    };
+    img.onload = () => setImageObj(img);
     img.src = url;
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  // Redraw Canvas with adjustments
+  // ── Redraw Canvas ────────────────────────────────────────────
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !imageObj) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -94,72 +111,63 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const brightnessVal = 100 + brightness;
-    const contrastVal = 100 + contrast;
+    const b = 100 + brightness;
+    const c = 100 + contrast;
+    const s = 100 + saturation;
+    let f = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
 
-    let filterStr = `brightness(${brightnessVal}%) contrast(${contrastVal}%)`;
-    if (filterPreset === "grayscale") filterStr += " grayscale(100%)";
-    if (filterPreset === "sepia") filterStr += " sepia(80%)";
-    if (filterPreset === "invert") filterStr += " invert(100%)";
-    if (filterPreset === "warm") filterStr += " sepia(30%) hue-rotate(-10deg)";
+    if (filterPreset === "grayscale") f += " grayscale(100%)";
+    else if (filterPreset === "sepia")   f += " sepia(80%)";
+    else if (filterPreset === "invert")  f += " invert(100%)";
+    else if (filterPreset === "warm")    f += " sepia(30%) hue-rotate(-10deg)";
+    else if (filterPreset === "cool")    f += " hue-rotate(180deg) saturate(150%)";
+    else if (filterPreset === "vivid")   f += " saturate(200%) contrast(110%)";
 
-    ctx.filter = filterStr;
-
+    ctx.filter = f;
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate((rotation * Math.PI) / 180);
     ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
-
-    ctx.drawImage(
-      imageObj,
-      -canvas.width / 2,
-      -canvas.height / 2,
-      canvas.width,
-      canvas.height
-    );
-
+    ctx.drawImage(imageObj, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
     ctx.restore();
-  }, [imageObj, brightness, contrast, rotation, flipH, flipV, filterPreset]);
+  }, [imageObj, brightness, contrast, saturation, rotation, flipH, flipV, filterPreset]);
 
-  useEffect(() => {
-    redrawCanvas();
-  }, [redrawCanvas]);
+  useEffect(() => { redrawCanvas(); }, [redrawCanvas]);
 
+  // ── History ──────────────────────────────────────────────────
   const saveState = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    setHistory((prev) => [...prev.slice(-15), data]);
+    setHistory((prev) => [...prev.slice(-20), ctx.getImageData(0, 0, canvas.width, canvas.height)]);
   };
 
   const handleUndo = () => {
     if (history.length === 0) return;
-    const previous = history[history.length - 1];
-    setHistory((prev) => prev.slice(0, -1));
+    const prev = history[history.length - 1];
+    setHistory((h) => h.slice(0, -1));
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.putImageData(previous, 0, 0);
+    ctx.putImageData(prev, 0, 0);
   };
 
-  const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // ── Canvas Drawing ───────────────────────────────────────────
+  const getCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
     };
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (activeHandle) return;
-    const coords = getCanvasCoords(e);
     saveState();
+    const coords = getCoords(e);
     isDrawingRef.current = true;
     startPosRef.current = coords;
     lastPosRef.current = coords;
@@ -167,7 +175,7 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current || activeHandle) return;
-    const coords = getCanvasCoords(e);
+    const coords = getCoords(e);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -178,16 +186,14 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
       ctx.beginPath();
       ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
       ctx.lineTo(coords.x, coords.y);
-
       if (tool === "erase") {
         ctx.globalCompositeOperation = "destination-out";
-        ctx.lineWidth = brushSize * 4;
+        ctx.lineWidth = brushSize * 5;
       } else {
         ctx.globalCompositeOperation = "source-over";
         ctx.strokeStyle = color;
         ctx.lineWidth = tool === "brush" ? brushSize * 3 : brushSize;
       }
-
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.stroke();
@@ -198,70 +204,55 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDrawingRef.current && startPosRef.current && (tool === "rect" || tool === "circle")) {
-      const coords = getCanvasCoords(e);
+      const coords = getCoords(e);
       const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.save();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = brushSize;
-          const w = coords.x - startPosRef.current.x;
-          const h = coords.y - startPosRef.current.y;
-          if (tool === "rect") {
-            ctx.strokeRect(startPosRef.current.x, startPosRef.current.y, w, h);
-          } else if (tool === "circle") {
-            ctx.beginPath();
-            const radius = Math.sqrt(w * w + h * h) / 2;
-            const cx = startPosRef.current.x + w / 2;
-            const cy = startPosRef.current.y + h / 2;
-            ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-            ctx.stroke();
-          }
-          ctx.restore();
+      const ctx = canvas?.getContext("2d");
+      if (ctx && canvas) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = brushSize;
+        ctx.lineJoin = "round";
+        const w = coords.x - startPosRef.current.x;
+        const h = coords.y - startPosRef.current.y;
+        if (tool === "rect") {
+          ctx.strokeRect(startPosRef.current.x, startPosRef.current.y, w, h);
+        } else {
+          ctx.beginPath();
+          const r = Math.sqrt(w * w + h * h) / 2;
+          ctx.arc(startPosRef.current.x + w / 2, startPosRef.current.y + h / 2, r, 0, 2 * Math.PI);
+          ctx.stroke();
         }
+        ctx.restore();
       }
     }
-
     isDrawingRef.current = false;
     lastPosRef.current = null;
     startPosRef.current = null;
     if (activeHandle) setActiveHandle(null);
   };
 
-  // Dragging Snipping Tool Handles
+  // ── Crop Handles ─────────────────────────────────────────────
   const startHandleDrag = (handle: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveHandle(handle);
-    dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      initialBox: { ...cropBox },
-    };
+    dragStartRef.current = { x: e.clientX, y: e.clientY, initialBox: { ...cropBox } };
   };
 
-  const handleGlobalMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!activeHandle || !dragStartRef.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const deltaX = ((e.clientX - dragStartRef.current.x) / rect.width) * 100;
-      const deltaY = ((e.clientY - dragStartRef.current.y) / rect.height) * 100;
-
-      const initial = dragStartRef.current.initialBox;
-
-      setCropBox(() => {
-        let { top, left, right, bottom } = initial;
-
-        if (activeHandle.includes("n")) top = Math.min(80, Math.max(0, initial.top + deltaY));
-        if (activeHandle.includes("s")) bottom = Math.min(80, Math.max(0, initial.bottom - deltaY));
-        if (activeHandle.includes("w")) left = Math.min(80, Math.max(0, initial.left + deltaX));
-        if (activeHandle.includes("e")) right = Math.min(80, Math.max(0, initial.right - deltaX));
-
-        return { top, left, right, bottom };
-      });
-    },
-    [activeHandle]
-  );
+  const handleGlobalMouseMove = useCallback((e: MouseEvent) => {
+    if (!activeHandle || !dragStartRef.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const dx = ((e.clientX - dragStartRef.current.x) / rect.width) * 100;
+    const dy = ((e.clientY - dragStartRef.current.y) / rect.height) * 100;
+    const b = dragStartRef.current.initialBox;
+    setCropBox(() => {
+      let { top, left, right, bottom } = b;
+      if (activeHandle.includes("n")) top = Math.min(80, Math.max(0, b.top + dy));
+      if (activeHandle.includes("s")) bottom = Math.min(80, Math.max(0, b.bottom - dy));
+      if (activeHandle.includes("w")) left = Math.min(80, Math.max(0, b.left + dx));
+      if (activeHandle.includes("e")) right = Math.min(80, Math.max(0, b.right - dx));
+      return { top, left, right, bottom };
+    });
+  }, [activeHandle]);
 
   const handleGlobalMouseUp = useCallback(() => {
     if (activeHandle) setActiveHandle(null);
@@ -278,346 +269,329 @@ export default function CanvasEditor({ file, onSave, onCancel }: CanvasEditorPro
     };
   }, [activeHandle, handleGlobalMouseMove, handleGlobalMouseUp]);
 
+  // ── Text Overlay ─────────────────────────────────────────────
   const handleAddText = () => {
     if (!captionText.trim()) return;
     saveState();
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
+    const ctx = canvas?.getContext("2d");
+    if (!ctx || !canvas) return;
     ctx.save();
-    ctx.font = `bold ${Math.max(20, fontSize * 2)}px ${fontFamily}, sans-serif`;
+    ctx.font = `bold ${fontSize * 2}px ${fontFamily}, sans-serif`;
     ctx.fillStyle = color;
-    ctx.shadowColor = "rgba(0,0,0,0.8)";
-    ctx.shadowBlur = 6;
-    ctx.fillText(captionText, canvas.width / 4, canvas.height / 2);
+    ctx.shadowColor = "rgba(0,0,0,0.9)";
+    ctx.shadowBlur = 8;
+    ctx.textAlign = "center";
+    ctx.fillText(captionText, canvas.width / 2, canvas.height / 2);
     ctx.restore();
+    setCaptionText("");
   };
 
+  // ── Export / Save ─────────────────────────────────────────────
   const handleSave = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const cropX = (cropBox.left / 100) * canvas.width;
     const cropY = (cropBox.top / 100) * canvas.height;
     const cropW = canvas.width * (1 - (cropBox.left + cropBox.right) / 100);
     const cropH = canvas.height * (1 - (cropBox.top + cropBox.bottom) / 100);
-
-    const outCanvas = document.createElement("canvas");
-    outCanvas.width = Math.max(10, cropW);
-    outCanvas.height = Math.max(10, cropH);
-
-    const outCtx = outCanvas.getContext("2d");
-    if (!outCtx) return;
-
-    outCtx.drawImage(
-      canvas,
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-      0,
-      0,
-      outCanvas.width,
-      outCanvas.height
-    );
-
-    outCanvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const editedFilename = `edited_${file.name.replace(/\.[^/.]+$/, "")}.png`;
-        const newFile = new File([blob], editedFilename, { type: "image/png" });
-        onSave(newFile);
-      },
-      "image/png",
-      0.95
-    );
+    const out = document.createElement("canvas");
+    out.width = Math.max(10, cropW);
+    out.height = Math.max(10, cropH);
+    out.getContext("2d")?.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, out.width, out.height);
+    out.toBlob((blob) => {
+      if (!blob) return;
+      onSave(new File([blob], `edited_${file.name.replace(/\.[^/.]+$/, "")}.png`, { type: "image/png" }));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }, "image/png", 0.95);
   };
 
-  const COLOR_PALETTE = ["#3b82f6", "#ef4444", "#eab308", "#22c55e", "#ffffff"];
+  const handleDownloadDirect = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `edited_${file.name.replace(/\.[^/.]+$/, "")}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  const TOOLS = [
+    { id: "pen",    icon: <Pencil className="w-3.5 h-3.5" />, label: "Pen" },
+    { id: "brush",  icon: <Paintbrush className="w-3.5 h-3.5" />, label: "Brush" },
+    { id: "rect",   icon: <Square className="w-3.5 h-3.5" />, label: "Box" },
+    { id: "circle", icon: <Circle className="w-3.5 h-3.5" />, label: "Circle" },
+    { id: "erase",  icon: <Eraser className="w-3.5 h-3.5" />, label: "Erase" },
+  ] as const;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
-      {/* 100% Viewport Single Page Shell (Zero Scrolling) */}
-      <div className="bg-[#0f1117] border border-white/10 rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-        
-        {/* Top Header */}
-        <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between bg-[#131620] flex-shrink-0">
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-300">
-            <div className="w-5 h-5 rounded bg-gradient-to-r from-cyan-400 to-indigo-500 flex items-center justify-center">
-              <Zap className="w-3 h-3 text-white" fill="currentColor" />
-            </div>
-            <span>FileForge</span>
-            <span className="text-slate-600">&gt;</span>
-            <span className="text-white font-bold">Canvas Studio (Premium)</span>
-          </div>
+    <div className="fixed inset-0 z-[100] flex flex-col overflow-hidden text-slate-100"
+         style={{ background: "#090b10", fontFamily: "'Inter', sans-serif" }}>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleUndo}
-              disabled={history.length === 0}
-              className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 text-slate-200 text-xs font-medium flex items-center gap-1 transition"
-            >
-              <Undo2 className="w-3.5 h-3.5" /> Undo
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition"
-            >
-              Save Changes
-            </button>
-            <button onClick={onCancel} className="text-slate-400 hover:text-white p-1">
-              <X className="w-5 h-5" />
-            </button>
+      {/* ── Header ── */}
+      <header className="flex-shrink-0 h-12 px-4 border-b border-white/10 flex items-center justify-between"
+              style={{ background: "#0d1018" }}>
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+          <div className="w-6 h-6 rounded-md flex items-center justify-center shadow"
+               style={{ background: "linear-gradient(135deg, #22d3ee, #6366f1)" }}>
+            <Zap className="w-3.5 h-3.5 text-white" fill="currentColor" />
           </div>
+          <span className="text-white font-bold" style={{ fontFamily: "'Outfit', sans-serif" }}>FileForge</span>
+          <span className="text-slate-600 mx-1">›</span>
+          <span className="text-cyan-400 font-medium text-xs hidden sm:block">Canvas Studio Premium</span>
         </div>
 
-        {/* Single Page Body Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 flex-1 overflow-hidden">
-          
-          {/* Main Viewport Column (3 cols) */}
-          <div className="lg:col-span-3 border-r border-white/10 p-3 flex flex-col justify-between overflow-hidden">
-            
-            {/* Top Toolbar Sub-Bar */}
-            <div className="bg-[#151822] border border-white/10 rounded-xl p-2 flex flex-wrap items-center justify-between gap-2 text-xs flex-shrink-0">
-              
-              {/* Tool selector */}
-              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg">
-                <button
-                  onClick={() => setTool("pen")}
-                  className={`px-2 py-1 rounded-md flex items-center gap-1 font-medium transition ${
-                    tool === "pen" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Pencil className="w-3.5 h-3.5" /> Pen
-                </button>
-                <button
-                  onClick={() => setTool("brush")}
-                  className={`px-2 py-1 rounded-md flex items-center gap-1 font-medium transition ${
-                    tool === "brush" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Paintbrush className="w-3.5 h-3.5" /> Brush
-                </button>
-                <button
-                  onClick={() => setTool("rect")}
-                  className={`px-2 py-1 rounded-md flex items-center gap-1 font-medium transition ${
-                    tool === "rect" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Square className="w-3.5 h-3.5" /> Box
-                </button>
-                <button
-                  onClick={() => setTool("circle")}
-                  className={`px-2 py-1 rounded-md flex items-center gap-1 font-medium transition ${
-                    tool === "circle" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Circle className="w-3.5 h-3.5" /> Circle
-                </button>
-                <button
-                  onClick={() => setTool("erase")}
-                  className={`px-2 py-1 rounded-md flex items-center gap-1 font-medium transition ${
-                    tool === "erase" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Eraser className="w-3.5 h-3.5" /> Erase
-                </button>
-              </div>
+        <div className="flex items-center gap-1.5">
+          <button onClick={handleUndo} disabled={history.length === 0}
+                  className="px-2.5 py-1 rounded-lg text-slate-300 text-xs font-medium flex items-center gap-1 transition disabled:opacity-30"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
+                  title="Undo (Ctrl+Z)">
+            <Undo2 className="w-3.5 h-3.5" /> Undo
+          </button>
+          <button onClick={handleDownloadDirect}
+                  className="px-2.5 py-1 rounded-lg text-slate-300 text-xs font-medium flex items-center gap-1 transition"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
+                  title="Quick Download PNG">
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+          <button onClick={handleSave}
+                  className="px-3.5 py-1.5 rounded-lg font-semibold text-xs text-white flex items-center gap-1.5 transition shadow-lg"
+                  style={{ background: saved ? "#16a34a" : "linear-gradient(135deg, #2563eb, #7c3aed)" }}>
+            {saved ? <><Star className="w-3.5 h-3.5" fill="currentColor" /> Saved!</> : <><Check className="w-3.5 h-3.5" /> Save Changes</>}
+          </button>
+          <button onClick={onCancel} className="ml-1 p-1 text-slate-500 hover:text-white transition" title="Close Editor">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </header>
 
-              {/* Color Palette */}
-              <div className="flex items-center gap-1.5">
-                {COLOR_PALETTE.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setColor(c)}
-                    className={`w-4 h-4 rounded-full border border-white/20 transition ${
-                      color === c ? "scale-125 ring-2 ring-blue-400" : ""
-                    }`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
+      {/* ── Main Body ── */}
+      <div className="flex-1 grid overflow-hidden min-h-0" style={{ gridTemplateColumns: "1fr 220px" }}>
 
-              {/* Zoom Level Controls */}
-              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg text-slate-300">
-                <button onClick={() => setZoomLevel((z) => Math.max(0.6, z - 0.15))} className="p-1 hover:text-white">
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </button>
-                <span className="font-mono text-[11px] px-1 font-bold">{Math.round(zoomLevel * 100)}%</span>
-                <button onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.15))} className="p-1 hover:text-white">
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => setZoomLevel(1)} className="p-1 hover:text-white text-[10px] font-bold">
-                  <Maximize2 className="w-3 h-3" />
-                </button>
-              </div>
+        {/* ── Canvas Workspace ── */}
+        <div className="flex flex-col overflow-hidden min-h-0 border-r border-white/10">
 
+          {/* Sub-toolbar */}
+          <div className="flex-shrink-0 px-3 py-1.5 border-b border-white/10 flex items-center gap-3 flex-wrap"
+               style={{ background: "#0f1220" }}>
+
+            {/* Tool group */}
+            <div className="flex items-center gap-0.5 rounded-lg p-0.5" style={{ background: "rgba(0,0,0,0.4)" }}>
+              {TOOLS.map(({ id, icon, label }) => (
+                <button key={id}
+                        onClick={() => setTool(id as typeof tool)}
+                        className={`px-2 py-1 rounded-md flex items-center gap-1 text-xs font-medium transition ${
+                          tool === id ? "text-white shadow" : "text-slate-400 hover:text-slate-200"
+                        }`}
+                        style={tool === id ? { background: "linear-gradient(135deg, #2563eb, #7c3aed)" } : {}}>
+                  {icon} <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
             </div>
 
-            {/* Main Canvas Viewport (Zero Scrollable Fit) */}
-            <div
-              ref={containerRef}
-              className="relative flex-1 canvas-grid-bg rounded-xl border border-white/10 flex items-center justify-center p-2 overflow-hidden"
-            >
-              <div
-                className="relative inline-block select-none transition-transform duration-150"
-                style={{ transform: `scale(${zoomLevel})` }}
-              >
-                <canvas
-                  ref={canvasRef}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                  className="max-w-full max-h-[46vh] object-contain shadow-2xl cursor-crosshair border border-white/20 rounded-md block"
-                />
-
-                {/* Crop Marquee */}
-                <div
-                  className="absolute border-2 border-blue-400 border-dashed pointer-events-none"
-                  style={{
-                    top: `${cropBox.top}%`,
-                    left: `${cropBox.left}%`,
-                    right: `${cropBox.right}%`,
-                    bottom: `${cropBox.bottom}%`,
-                    boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.45)",
-                  }}
-                />
-
-                {/* 8 Snipping Tool Handles */}
-                <div onMouseDown={(e) => startHandleDrag("nw", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-nwse-resize z-20 hover:scale-125" style={{ top: `calc(${cropBox.top}% - 7px)`, left: `calc(${cropBox.left}% - 7px)` }} />
-                <div onMouseDown={(e) => startHandleDrag("n", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-ns-resize z-20 hover:scale-125" style={{ top: `calc(${cropBox.top}% - 7px)`, left: `calc(50% + ${cropBox.left / 2}% - ${cropBox.right / 2}% - 7px)` }} />
-                <div onMouseDown={(e) => startHandleDrag("ne", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-nesw-resize z-20 hover:scale-125" style={{ top: `calc(${cropBox.top}% - 7px)`, right: `calc(${cropBox.right}% - 7px)` }} />
-
-                <div onMouseDown={(e) => startHandleDrag("w", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-ew-resize z-20 hover:scale-125" style={{ top: `calc(50% + ${cropBox.top / 2}% - ${cropBox.bottom / 2}% - 7px)`, left: `calc(${cropBox.left}% - 7px)` }} />
-                <div onMouseDown={(e) => startHandleDrag("e", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-ew-resize z-20 hover:scale-125" style={{ top: `calc(50% + ${cropBox.top / 2}% - ${cropBox.bottom / 2}% - 7px)`, right: `calc(${cropBox.right}% - 7px)` }} />
-
-                <div onMouseDown={(e) => startHandleDrag("sw", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-nesw-resize z-20 hover:scale-125" style={{ bottom: `calc(${cropBox.bottom}% - 7px)`, left: `calc(${cropBox.left}% - 7px)` }} />
-                <div onMouseDown={(e) => startHandleDrag("s", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-ns-resize z-20 hover:scale-125" style={{ bottom: `calc(${cropBox.bottom}% - 7px)`, left: `calc(50% + ${cropBox.left / 2}% - ${cropBox.right / 2}% - 7px)` }} />
-                <div onMouseDown={(e) => startHandleDrag("se", e)} className="absolute w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white cursor-nwse-resize z-20 hover:scale-125" style={{ bottom: `calc(${cropBox.bottom}% - 7px)`, right: `calc(${cropBox.right}% - 7px)` }} />
-              </div>
+            {/* Color palette */}
+            <div className="flex items-center gap-1">
+              {COLOR_PALETTE.map((c) => (
+                <button key={c} onClick={() => setColor(c)}
+                        className={`rounded-full border transition flex-shrink-0 ${
+                          color === c ? "scale-125 ring-2 ring-cyan-400 border-transparent" : "border-white/20"
+                        }`}
+                        style={{ width: "14px", height: "14px", background: c }} />
+              ))}
+              <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
+                     className="w-6 h-5 rounded cursor-pointer border border-white/20 bg-transparent"
+                     title="Custom color" />
             </div>
 
-            {/* Bottom Controls Row: Rotate, Flip, Brightness, Contrast */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-shrink-0">
-              
-              {/* Rotate & Flips */}
-              <div className="flex items-center gap-1 bg-[#151822] border border-white/10 rounded-xl p-1.5">
-                <button onClick={() => setRotation((r) => (r + 90) % 360)} className="flex-1 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-medium flex items-center justify-center gap-1">
-                  <RotateCw className="w-3.5 h-3.5 text-blue-400" /> 90°
-                </button>
-                <button onClick={() => setFlipH(!flipH)} className={`p-1 rounded ${flipH ? "bg-blue-600 text-white" : "bg-white/5 text-slate-300"}`}>
-                  <FlipHorizontal className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => setFlipV(!flipV)} className={`p-1 rounded ${flipV ? "bg-blue-600 text-white" : "bg-white/5 text-slate-300"}`}>
-                  <FlipVertical className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Brightness */}
-              <div className="bg-[#151822] border border-white/10 rounded-xl p-2 text-left">
-                <div className="flex justify-between items-center text-[11px] text-slate-300 mb-1">
-                  <span className="flex items-center gap-1"><Sun className="w-3 h-3 text-amber-400" /> Brightness</span>
-                  <span className="font-mono text-blue-400 font-bold">{brightness > 0 ? `+${brightness}` : brightness}</span>
-                </div>
-                <input type="range" min={-100} max={100} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full accent-blue-500 h-1 cursor-pointer" />
-              </div>
-
-              {/* Contrast */}
-              <div className="bg-[#151822] border border-white/10 rounded-xl p-2 text-left">
-                <div className="flex justify-between items-center text-[11px] text-slate-300 mb-1">
-                  <span className="flex items-center gap-1"><ContrastIcon className="w-3 h-3 text-blue-400" /> Contrast</span>
-                  <span className="font-mono text-blue-400 font-bold">{contrast > 0 ? `+${contrast}` : contrast}</span>
-                </div>
-                <input type="range" min={-100} max={100} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-blue-500 h-1 cursor-pointer" />
-              </div>
-
-              {/* Premium Filter Presets */}
-              <div className="bg-[#151822] border border-white/10 rounded-xl p-2 text-left">
-                <div className="text-[11px] text-slate-300 mb-1 font-medium flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-cyan-400" /> Filter Presets
-                </div>
-                <select
-                  value={filterPreset}
-                  onChange={(e) => setFilterPreset(e.target.value as any)}
-                  className="w-full bg-[#1c202d] border border-white/10 rounded text-[11px] text-slate-200 p-1 outline-none"
-                >
-                  <option value="none">Original</option>
-                  <option value="grayscale">Grayscale</option>
-                  <option value="sepia">Sepia Vintage</option>
-                  <option value="warm">Warm Film</option>
-                  <option value="invert">Invert Colors</option>
-                </select>
-              </div>
-
+            {/* Brush size */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <span className="hidden sm:block">Size</span>
+              <input type="range" min={1} max={30} value={brushSize}
+                     onChange={(e) => setBrushSize(Number(e.target.value))}
+                     className="w-16 accent-cyan-500 h-1 cursor-pointer" />
+              <span className="font-mono text-cyan-400 w-5 text-center">{brushSize}</span>
             </div>
 
+            {/* Zoom */}
+            <div className="flex items-center gap-0.5 rounded-lg p-0.5 ml-auto" style={{ background: "rgba(0,0,0,0.4)" }}>
+              <button onClick={() => setZoomLevel((z) => Math.max(0.25, z - 0.1))}
+                      className="p-1 text-slate-400 hover:text-white transition"><ZoomOut className="w-3.5 h-3.5" /></button>
+              <span className="font-mono text-xs px-1.5 text-cyan-400 font-bold">{Math.round(zoomLevel * 100)}%</span>
+              <button onClick={() => setZoomLevel((z) => Math.min(4, z + 0.1))}
+                      className="p-1 text-slate-400 hover:text-white transition"><ZoomIn className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setZoomLevel(1)}
+                      className="p-1 text-slate-400 hover:text-white transition" title="Reset zoom"><Maximize2 className="w-3 h-3" /></button>
+            </div>
           </div>
 
-          {/* Right Sidebar Column */}
-          <div className="p-3 bg-[#11141d] flex flex-col justify-between text-left border-t lg:border-t-0 border-white/10 overflow-hidden">
-            <div>
-              <h4 className="text-xs font-bold text-slate-200 mb-1 flex items-center gap-1" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                <Type className="w-3.5 h-3.5 text-cyan-400" /> Text Annotation
-              </h4>
-              <p className="text-[11px] text-slate-400 mb-2">Add caption stamp...</p>
+          {/* Canvas area */}
+          <div ref={containerRef}
+               className="flex-1 relative flex items-center justify-center overflow-hidden min-h-0"
+               style={{ background: "radial-gradient(ellipse at center, #12182b 0%, #090b10 100%)",
+                        backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+                        backgroundSize: "24px 24px" }}>
+            <div className="relative inline-block select-none transition-transform duration-150"
+                 style={{ transform: `scale(${zoomLevel})` }}>
+              <canvas ref={canvasRef}
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                      className="block rounded-md border border-white/15 shadow-2xl cursor-crosshair"
+                      style={{ maxWidth: "100%", maxHeight: "calc(100vh - 200px)", objectFit: "contain" }} />
 
-              <textarea
-                value={captionText}
-                onChange={(e) => setCaptionText(e.target.value)}
-                placeholder="Type caption..."
-                className="w-full h-16 bg-[#181b26] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 focus:border-blue-500 outline-none resize-none mb-2"
-              />
+              {/* Crop overlay */}
+              <div className="absolute border-2 border-cyan-400 border-dashed pointer-events-none rounded-sm"
+                   style={{ top: `${cropBox.top}%`, left: `${cropBox.left}%`,
+                            right: `${cropBox.right}%`, bottom: `${cropBox.bottom}%`,
+                            boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }} />
 
-              <div className="grid grid-cols-3 gap-1.5 mb-2">
-                <select
-                  value={fontFamily}
-                  onChange={(e) => setFontFamily(e.target.value)}
-                  className="bg-[#181b26] border border-white/10 rounded-lg p-1.5 text-[11px] text-slate-200 outline-none"
-                >
-                  <option value="Inter">Inter</option>
-                  <option value="Outfit">Outfit</option>
-                  <option value="Roboto">Roboto</option>
-                </select>
+              {/* 8 crop handles */}
+              {[
+                { h: "nw", style: { top: `calc(${cropBox.top}% - 7px)`,    left: `calc(${cropBox.left}% - 7px)`,  cursor: "nwse-resize" }},
+                { h: "n",  style: { top: `calc(${cropBox.top}% - 7px)`,    left: `calc(50% - 7px)`,               cursor: "ns-resize"   }},
+                { h: "ne", style: { top: `calc(${cropBox.top}% - 7px)`,    right: `calc(${cropBox.right}% - 7px)`,cursor: "nesw-resize" }},
+                { h: "w",  style: { top: `calc(50% - 7px)`,                left: `calc(${cropBox.left}% - 7px)`,  cursor: "ew-resize"   }},
+                { h: "e",  style: { top: `calc(50% - 7px)`,                right: `calc(${cropBox.right}% - 7px)`,cursor: "ew-resize"   }},
+                { h: "sw", style: { bottom: `calc(${cropBox.bottom}% - 7px)`,left: `calc(${cropBox.left}% - 7px)`,cursor: "nesw-resize" }},
+                { h: "s",  style: { bottom: `calc(${cropBox.bottom}% - 7px)`,left: `calc(50% - 7px)`,             cursor: "ns-resize"   }},
+                { h: "se", style: { bottom: `calc(${cropBox.bottom}% - 7px)`,right:`calc(${cropBox.right}% - 7px)`,cursor:"nwse-resize" }},
+              ].map(({ h, style }) => (
+                <div key={h}
+                     onMouseDown={(e) => startHandleDrag(h, e)}
+                     className="absolute w-3.5 h-3.5 rounded-full border-2 border-white z-20 hover:scale-125 transition-transform"
+                     style={{ ...style, background: "linear-gradient(135deg, #22d3ee, #6366f1)", width: "14px", height: "14px" }} />
+              ))}
+            </div>
+          </div>
 
-                <select
-                  value={fontSize}
-                  onChange={(e) => setFontSize(Number(e.target.value))}
-                  className="bg-[#181b26] border border-white/10 rounded-lg p-1.5 text-[11px] text-slate-200 outline-none"
-                >
-                  <option value={14}>14px</option>
-                  <option value={16}>16px</option>
-                  <option value={20}>20px</option>
-                  <option value={24}>24px</option>
-                </select>
-
-                <div className="bg-[#181b26] border border-white/10 rounded-lg p-1 flex items-center justify-center">
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-5 h-5 rounded cursor-pointer border-none bg-transparent"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleAddText}
-                className="w-full py-2 rounded-xl bg-[#262c3d] hover:bg-[#32394f] text-slate-200 font-semibold text-xs transition"
-              >
-                Add Text
+          {/* Bottom controls strip */}
+          <div className="flex-shrink-0 grid grid-cols-4 gap-2 p-2 border-t border-white/10"
+               style={{ background: "#0d1018", height: "64px" }}>
+            {/* Rotate + Flip */}
+            <div className="flex items-center gap-1 rounded-xl p-1.5 border border-white/10" style={{ background: "#151822" }}>
+              <button onClick={() => setRotation((r) => (r + 90) % 360)}
+                      className="flex-1 py-0.5 rounded text-slate-200 text-xs font-medium flex items-center justify-center gap-1 hover:bg-white/10 transition">
+                <RotateCw className="w-3.5 h-3.5 text-cyan-400" /> 90°
+              </button>
+              <button onClick={() => setFlipH(!flipH)}
+                      className={`p-1 rounded transition ${flipH ? "text-white" : "text-slate-400 hover:text-white"}`}
+                      style={flipH ? { background: "linear-gradient(135deg, #2563eb, #7c3aed)" } : {}}>
+                <FlipHorizontal className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => setFlipV(!flipV)}
+                      className={`p-1 rounded transition ${flipV ? "text-white" : "text-slate-400 hover:text-white"}`}
+                      style={flipV ? { background: "linear-gradient(135deg, #2563eb, #7c3aed)" } : {}}>
+                <FlipVertical className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <p className="text-[10px] text-slate-500">
-              ⚡ Premium: Snipping tool handles, Zoom, Flip H/V &amp; Undo enabled.
-            </p>
-          </div>
+            {/* Brightness */}
+            <div className="rounded-xl p-1.5 border border-white/10 flex flex-col justify-center" style={{ background: "#151822" }}>
+              <div className="flex justify-between items-center text-[10px] text-slate-400 mb-0.5">
+                <span className="flex items-center gap-0.5"><Sun className="w-3 h-3 text-amber-400" /> Brightness</span>
+                <span className="font-mono text-cyan-400 font-bold">{brightness > 0 ? `+${brightness}` : brightness}</span>
+              </div>
+              <input type="range" min={-100} max={100} value={brightness}
+                     onChange={(e) => setBrightness(Number(e.target.value))}
+                     className="w-full accent-amber-400 h-1 cursor-pointer" />
+            </div>
 
+            {/* Contrast */}
+            <div className="rounded-xl p-1.5 border border-white/10 flex flex-col justify-center" style={{ background: "#151822" }}>
+              <div className="flex justify-between items-center text-[10px] text-slate-400 mb-0.5">
+                <span className="flex items-center gap-0.5"><ContrastIcon className="w-3 h-3 text-blue-400" /> Contrast</span>
+                <span className="font-mono text-cyan-400 font-bold">{contrast > 0 ? `+${contrast}` : contrast}</span>
+              </div>
+              <input type="range" min={-100} max={100} value={contrast}
+                     onChange={(e) => setContrast(Number(e.target.value))}
+                     className="w-full accent-blue-400 h-1 cursor-pointer" />
+            </div>
+
+            {/* Filter Preset */}
+            <div className="rounded-xl p-1.5 border border-white/10 flex flex-col justify-center" style={{ background: "#151822" }}>
+              <div className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-0.5">
+                <Sparkles className="w-3 h-3 text-purple-400" /> Filter Preset
+              </div>
+              <select value={filterPreset} onChange={(e) => setFilterPreset(e.target.value as typeof filterPreset)}
+                      className="w-full text-[11px] text-slate-200 rounded p-0.5 outline-none border border-white/10"
+                      style={{ background: "#1c2030" }}>
+                {FILTER_PRESETS.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
+        {/* ── Right Sidebar ── */}
+        <div className="flex flex-col overflow-y-auto text-left p-3 gap-3" style={{ background: "#0d1018" }}>
+
+          {/* Text Annotation */}
+          <div className="rounded-xl border border-white/10 p-3" style={{ background: "#111520" }}>
+            <h4 className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-1.5"
+                style={{ fontFamily: "'Outfit', sans-serif" }}>
+              <Type className="w-3.5 h-3.5 text-cyan-400" /> Text Annotation
+            </h4>
+            <textarea value={captionText} onChange={(e) => setCaptionText(e.target.value)}
+                      placeholder="Type caption text..."
+                      className="w-full h-16 rounded-lg p-2 text-xs text-slate-200 outline-none resize-none border border-white/10 focus:border-cyan-500 transition"
+                      style={{ background: "#181c2a" }} />
+            <div className="grid grid-cols-2 gap-1.5 mt-2 mb-2">
+              <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}
+                      className="rounded-lg p-1 text-[11px] text-slate-200 outline-none border border-white/10"
+                      style={{ background: "#181c2a" }}>
+                {["Inter", "Outfit", "Roboto", "Georgia", "Courier New"].map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+              <select value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))}
+                      className="rounded-lg p-1 text-[11px] text-slate-200 outline-none border border-white/10"
+                      style={{ background: "#181c2a" }}>
+                {[14, 18, 24, 32, 48, 64].map((s) => (
+                  <option key={s} value={s}>{s}px</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={handleAddText}
+                    className="w-full py-1.5 rounded-lg text-xs font-semibold text-white transition"
+                    style={{ background: "linear-gradient(135deg, #0ea5e9, #6366f1)" }}>
+              ＋ Add Text to Image
+            </button>
+          </div>
+
+          {/* Saturation */}
+          <div className="rounded-xl border border-white/10 p-3" style={{ background: "#111520" }}>
+            <div className="flex justify-between items-center text-xs text-slate-400 mb-1.5">
+              <span className="font-medium text-slate-200">Saturation</span>
+              <span className="font-mono text-cyan-400">{saturation > 0 ? `+${saturation}` : saturation}</span>
+            </div>
+            <input type="range" min={-100} max={100} value={saturation}
+                   onChange={(e) => setSaturation(Number(e.target.value))}
+                   className="w-full accent-pink-400 h-1 cursor-pointer" />
+          </div>
+
+          {/* Crop Reset */}
+          <div className="rounded-xl border border-white/10 p-3" style={{ background: "#111520" }}>
+            <h4 className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-1.5"
+                style={{ fontFamily: "'Outfit', sans-serif" }}>
+              <Crop className="w-3.5 h-3.5 text-amber-400" /> Crop Box
+            </h4>
+            <p className="text-[10px] text-slate-500 mb-2">Drag the 8 blue handles on canvas to crop the image region.</p>
+            <button onClick={() => setCropBox({ top: 0, left: 0, right: 0, bottom: 0 })}
+                    className="w-full py-1.5 rounded-lg border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/5 transition">
+              Reset Crop
+            </button>
+          </div>
+
+          {/* Premium badge */}
+          <div className="rounded-xl p-3 text-center text-[10px] text-slate-500 border border-white/5 mt-auto"
+               style={{ background: "rgba(99,102,241,0.05)" }}>
+            <Sparkles className="w-3.5 h-3.5 text-purple-400 mx-auto mb-1" />
+            <span className="text-purple-400 font-semibold">Premium Canvas Studio</span>
+            <br />⚡ Zero-scroll · Full-viewport workspace
+          </div>
+        </div>
       </div>
     </div>
   );
