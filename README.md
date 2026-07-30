@@ -42,6 +42,29 @@ It provides military-grade security, instant file format conversions, binary-sea
 
 ---
 
+## 📸 Screen Tour & Visual Walkthrough
+
+### ⚡ 1. Modern Dark-Mode Homepage & Tool Hub
+The main dashboard provides access to Image Convert, Resize & Compress, PDF Tools, and History.
+
+![FileForge Homepage Screen Tour](docs/screenshots/hero.png)
+
+---
+
+### 🎨 2. Interactive Canvas Editor (`CanvasEditor.tsx`)
+Before converting or downloading, users can open the interactive canvas modal to draw with pen, crop regions visually, scale dimensions, add text watermarks, adjust brightness/contrast, or rotate & flip images.
+
+![Interactive Canvas Editor Screenshot](docs/screenshots/canvas_editor.png)
+
+---
+
+### 👁️ 3. Post-Conversion Live Preview, Date/Time & Server Purging
+Once processing finishes, the UI instantly renders a live preview of the output file, displays the exact UTC conversion date and timestamp, shows expected compression size calculations, and provides one-click **"Delete from Server"** purging.
+
+![Post-Conversion Result Preview & Actions](docs/screenshots/result_preview.png)
+
+---
+
 ## 🏗️ Project Architecture
 
 ```
