@@ -222,16 +222,25 @@ export async function convertPdfToImages(
 
 /**
  * Trigger browser download from a job's download URL.
- * Works in both dev (proxy) and production (direct backend URL).
+ * Uses Blob fetching to guarantee cross-origin file downloads work in all browsers.
  */
-export function triggerDownload(jobId: string, filename: string): void {
-  const url = `${API_BASE_URL}/api/download/${jobId}`;
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+export async function triggerDownload(jobId: string, filename: string): Promise<void> {
+  const downloadEndpoint = `/api/download/${jobId}`;
+  try {
+    const response = await api.get(downloadEndpoint, { responseType: "blob" });
+    const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+  } catch (err) {
+    console.error("Blob download failed, falling back to direct window download:", err);
+    const directUrl = `${API_BASE_URL}${downloadEndpoint}`;
+    window.open(directUrl, "_blank");
+  }
 }
 
 /**

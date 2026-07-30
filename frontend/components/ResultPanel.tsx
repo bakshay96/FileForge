@@ -139,9 +139,18 @@ export default function ResultPanel({
     };
   }, [job.job_id, job.status, isImageOutput]);
 
-  const handleDownload = () => {
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
     if (job.job_id && job.output_filename) {
-      triggerDownload(job.job_id, job.output_filename);
+      setDownloading(true);
+      try {
+        await triggerDownload(job.job_id, job.output_filename);
+      } catch (e) {
+        console.error("Download failed:", e);
+      } finally {
+        setDownloading(false);
+      }
     }
   };
 
@@ -299,10 +308,11 @@ export default function ResultPanel({
         <div className="flex items-center gap-3">
           <button
             onClick={handleDownload}
-            className="btn-brand flex-1 py-3 text-sm gap-2 font-semibold"
+            disabled={downloading}
+            className="btn-brand flex-1 py-3 text-sm gap-2 font-semibold disabled:opacity-50"
           >
-            <FileDown className="w-4 h-4" />
-            Download {job.output_filename ?? "File"}
+            <FileDown className={`w-4 h-4 ${downloading ? "animate-bounce" : ""}`} />
+            {downloading ? "Downloading…" : `Download ${job.output_filename ?? "File"}`}
           </button>
 
           <button

@@ -24,6 +24,7 @@ from app.core.security import (
     validate_image_file,
     ALLOWED_IMAGE_MIMES,
     PILLOW_FORMAT_MAP,
+    generate_output_filename,
 )
 from app.db.mongodb import get_database
 from app.models.file_job import FileJob, JobResponse, OperationType, JobStatus
@@ -125,7 +126,7 @@ async def convert_image(
         output_path, size = image_service.convert_image(file_bytes, fmt, quality)
         job.status = JobStatus.COMPLETED
         job.output_path = str(output_path)
-        job.output_filename = f"fileforge_{job.job_id}.{fmt}"
+        job.output_filename = generate_output_filename(job.original_filename, fmt)
         job.file_size_bytes = size
     except Exception as exc:
         logger.error(f"Image conversion failed: {exc}", exc_info=True)
@@ -224,7 +225,7 @@ async def resize_image(
             )
         job.status = JobStatus.COMPLETED
         job.output_path = str(output_path)
-        job.output_filename = f"fileforge_resized_{job.job_id}.{fmt}"
+        job.output_filename = generate_output_filename(job.original_filename, fmt, "resized")
         job.file_size_bytes = size
     except Exception as exc:
         logger.error(f"Image resize failed: {exc}", exc_info=True)
@@ -325,7 +326,7 @@ async def edit_image(
         )
         job.status = JobStatus.COMPLETED
         job.output_path = str(output_path)
-        job.output_filename = f"fileforge_edited_{job.job_id}.{fmt}"
+        job.output_filename = generate_output_filename(job.original_filename, fmt, "edited")
         job.file_size_bytes = size
     except Exception as exc:
         logger.error(f"Image edit failed: {exc}", exc_info=True)

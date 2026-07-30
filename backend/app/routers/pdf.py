@@ -14,7 +14,7 @@ from fastapi import APIRouter, File, UploadFile, Form, HTTPException, status, Re
 
 from app.config.settings import settings
 from app.core.auth_jwt import get_current_user
-from app.core.security import validate_pdf_file
+from app.core.security import validate_pdf_file, generate_output_filename
 from app.db.mongodb import get_database
 from app.models.file_job import FileJob, JobResponse, OperationType, JobStatus
 from app.services import pdf_service
@@ -97,7 +97,7 @@ async def compress_pdf(
         output_path, size = pdf_service.compress_pdf(file_bytes, target_kb, image_quality)
         job.status = JobStatus.COMPLETED
         job.output_path = str(output_path)
-        job.output_filename = f"fileforge_compressed_{job.job_id}.pdf"
+        job.output_filename = generate_output_filename(job.original_filename, "pdf", "compressed")
         job.file_size_bytes = size
     except Exception as exc:
         logger.error(f"PDF compression failed: {exc}", exc_info=True)
@@ -198,7 +198,7 @@ async def convert_pdf_to_images(
         output_path, size = pdf_service.pdf_to_images(file_bytes, fmt, dpi, page_list)
         job.status = JobStatus.COMPLETED
         job.output_path = str(output_path)
-        job.output_filename = f"fileforge_pages_{job.job_id}.zip"
+        job.output_filename = generate_output_filename(job.original_filename, "zip", "pages")
         job.file_size_bytes = size
     except Exception as exc:
         logger.error(f"PDF conversion failed: {exc}", exc_info=True)
