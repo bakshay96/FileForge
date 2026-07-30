@@ -28,7 +28,7 @@ api.interceptors.request.use((config) => {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type JobStatus = "pending" | "processing" | "completed" | "failed";
+export type JobStatus = "pending" | "processing" | "completed" | "failed" | "deleted";
 export type OperationType =
   | "image_convert"
   | "image_resize"

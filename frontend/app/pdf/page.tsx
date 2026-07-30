@@ -24,6 +24,7 @@ export default function PdfPage() {
   const [file,         setFile]         = useState<File | null>(null);
   const [mode,         setMode]         = useState<Mode>("compress");
   const [targetKb,     setTargetKb]     = useState("");
+  const [compressionPercent, setCompressionPercent] = useState(50);
   const [imgQuality,   setImgQuality]   = useState(75);
   const [imgFormat,    setImgFormat]    = useState("jpg");
   const [dpi,          setDpi]          = useState(150);
@@ -134,30 +135,73 @@ export default function PdfPage() {
 
             {mode === "compress" && (
               <>
+                {/* Compression Level Slider */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs text-slate-400 font-medium">
+                      Desired Compression Level:{" "}
+                      <span className="text-emerald-400 font-mono font-bold">{compressionPercent}% Reduction</span>
+                    </label>
+                  </div>
+                  <input
+                    type="range"
+                    min={10}
+                    max={85}
+                    value={compressionPercent}
+                    onChange={(e) => {
+                      const pct = Number(e.target.value);
+                      setCompressionPercent(pct);
+                      if (file) {
+                        const estKb = Math.max(10, Math.round((file.size / 1024) * (1 - pct / 100)));
+                        setTargetKb(String(estKb));
+                      }
+                    }}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+                </div>
+
+                {/* Real-time Expected Size Calculator */}
+                {file && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3.5 text-xs text-left">
+                    <div className="flex items-center justify-between font-medium text-slate-300 mb-1">
+                      <span>Original File Size:</span>
+                      <span className="font-mono text-slate-200 font-bold">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                    </div>
+                    <div className="flex items-center justify-between font-medium text-emerald-400">
+                      <span>Expected Output Size:</span>
+                      <span className="font-mono font-bold text-sm">
+                        ~{((file.size * (1 - compressionPercent / 100)) / (1024 * 1024)).toFixed(2)} MB
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-400 border-t border-emerald-500/10 pt-1 flex justify-between">
+                      <span>Est. Reduction: ~{compressionPercent}%</span>
+                      <span>Est. Saved: ~{((file.size * (compressionPercent / 100)) / (1024 * 1024)).toFixed(2)} MB</span>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="text-xs text-slate-400 mb-1.5 block font-medium">
-                    Target Size (KB) — optional
+                    Manual Target Size (KB) — optional override
                   </label>
                   <input
-                    className="forge-input font-mono"
+                    className="forge-input font-mono text-xs"
                     type="number"
-                    placeholder="Leave empty for best-effort compression"
+                    placeholder="e.g. 500"
                     value={targetKb}
                     onChange={(e) => setTargetKb(e.target.value)}
                   />
                 </div>
+
                 <div>
                   <label className="text-xs text-slate-400 mb-1.5 block font-medium">
-                    Image Quality: <span className="text-emerald-400 font-mono font-bold">{imgQuality}%</span>
+                    Raster Image Quality: <span className="text-emerald-400 font-mono font-bold">{imgQuality}%</span>
                   </label>
                   <input
                     type="range" min={10} max={100} value={imgQuality}
                     onChange={(e) => setImgQuality(Number(e.target.value))}
                     className="w-full accent-emerald-500 cursor-pointer"
                   />
-                  <p className="text-xs text-slate-600 mt-1">
-                    Controls embedded raster image re-compression quality.
-                  </p>
                 </div>
               </>
             )}

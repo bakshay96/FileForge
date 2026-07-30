@@ -141,6 +141,9 @@ export default function HistoryPage() {
                       <p className="text-xs text-slate-500 mt-0.5">
                         {item.operation.replace("_", " ").toUpperCase()} · {item.file_size_bytes ? `${(item.file_size_bytes / 1024).toFixed(1)} KB` : "—"}
                       </p>
+                      <p className="text-[11px] text-brand-400/80 font-mono mt-0.5">
+                        📅 {item.created_at ? new Date(item.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Recently"}
+                      </p>
                     </div>
                   </div>
 
