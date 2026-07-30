@@ -183,3 +183,20 @@ def generate_safe_filepath(extension: str) -> Path:
     """
     safe_name = f"{uuid.uuid4().hex}.{extension.lower().lstrip('.')}"
     return settings.tmp_dir / safe_name
+
+
+def generate_output_filename(original_filename: str, output_format: str, extra_suffix: str = "") -> str:
+    """
+    Generate output filename format: [original_name_stem]_fileforge_[YYYYMMDD_HHMMSS].[ext]
+    Example: photo_fileforge_20260730_071530.webp
+    """
+    from datetime import datetime, timezone
+    stem = Path(original_filename).stem or "file"
+    # Clean stem to keep alphanumeric, dash, and underscore
+    clean_stem = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in stem)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ext = output_format.lstrip(".")
+    if extra_suffix:
+        return f"{clean_stem}_fileforge_{extra_suffix}_{timestamp}.{ext}"
+    return f"{clean_stem}_fileforge_{timestamp}.{ext}"
+
