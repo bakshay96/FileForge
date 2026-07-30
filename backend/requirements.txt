@@ -13,7 +13,8 @@ aiofiles>=23.2.1
 
 # Settings management
 pydantic-settings>=2.2.1
-pydantic>=2.7.1
+pydantic[email]>=2.7.1
+email-validator>=2.1.0
 
 # MongoDB async driver
 motor>=3.4.0
