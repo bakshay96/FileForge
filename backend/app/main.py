@@ -29,7 +29,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from app.config.settings import settings
 from app.core.cleanup import start_cleanup_scheduler, stop_cleanup_scheduler
@@ -254,17 +254,370 @@ async def health_check():
     }
 
 
-# ── Root ──────────────────────────────────────────────────────────────────────
+# ── Root — Welcome Page ───────────────────────────────────────────────────────
 
 
-@app.get("/", tags=["System"])
+@app.get("/", tags=["System"], response_class=HTMLResponse)
 async def root():
-    return {
-        "message": f"Welcome to {settings.app_name} API",
-        "version": settings.app_version,
-        "docs": "/docs",
-        "health": "/api/health",
-    }
+    """Serves a branded HTML welcome page with full API documentation."""
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{settings.app_name} API — v{settings.app_version}</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f13;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }}
+    .container {{ max-width: 860px; margin: 0 auto; }}
+
+    /* Header */
+    .header {{
+      text-align: center;
+      padding: 3rem 0 2rem;
+      border-bottom: 1px solid #1e1e2e;
+      margin-bottom: 2.5rem;
+    }}
+    .logo {{
+      font-size: 2.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1px;
+    }}
+    .version {{
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.2rem 0.75rem;
+      background: #1e1e2e;
+      border: 1px solid #6366f1;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: #a5b4fc;
+    }}
+    .tagline {{
+      margin-top: 1rem;
+      color: #64748b;
+      font-size: 1rem;
+    }}
+
+    /* Status badge */
+    .status {{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.2rem;
+      font-size: 0.9rem;
+      color: #4ade80;
+    }}
+    .dot {{
+      width: 8px; height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }}
+    @keyframes pulse {{
+      0%, 100% {{ opacity: 1; }}
+      50% {{ opacity: 0.4; }}
+    }}
+
+    /* Quick links */
+    .quick-links {{
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 2.5rem;
+    }}
+    .btn {{
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }}
+    .btn-primary {{
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+    }}
+    .btn-primary:hover {{ opacity: 0.85; transform: translateY(-1px); }}
+    .btn-outline {{
+      border: 1px solid #334155;
+      color: #94a3b8;
+      background: #1e1e2e;
+    }}
+    .btn-outline:hover {{ border-color: #6366f1; color: #a5b4fc; }}
+
+    /* Sections */
+    .section {{ margin-bottom: 2rem; }}
+    .section-title {{
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #475569;
+      margin-bottom: 0.75rem;
+    }}
+
+    /* Endpoint cards */
+    .card {{
+      background: #13131a;
+      border: 1px solid #1e1e2e;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 0.6rem;
+    }}
+    .endpoint {{
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #1e1e2e;
+    }}
+    .endpoint:last-child {{ border-bottom: none; }}
+    .method {{
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      min-width: 48px;
+      text-align: center;
+    }}
+    .get  {{ background: #052e16; color: #4ade80; border: 1px solid #166534; }}
+    .post {{ background: #172554; color: #93c5fd; border: 1px solid #1d4ed8; }}
+    .path {{
+      font-family: 'Courier New', monospace;
+      font-size: 0.88rem;
+      color: #e2e8f0;
+      flex: 1;
+    }}
+    .desc {{ font-size: 0.8rem; color: #475569; text-align: right; }}
+
+    /* Feature grid */
+    .features {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }}
+    .feature {{
+      background: #13131a;
+      border: 1px solid #1e1e2e;
+      border-radius: 10px;
+      padding: 1rem;
+    }}
+    .feature-icon {{ font-size: 1.5rem; margin-bottom: 0.4rem; }}
+    .feature-title {{ font-size: 0.9rem; font-weight: 600; color: #c4b5fd; }}
+    .feature-desc {{ font-size: 0.78rem; color: #475569; margin-top: 0.25rem; }}
+
+    /* Info grid */
+    .info-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }}
+    .info-card {{
+      background: #13131a;
+      border: 1px solid #1e1e2e;
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+    }}
+    .info-value {{ font-size: 1.4rem; font-weight: 700; color: #a5b4fc; }}
+    .info-label {{ font-size: 0.75rem; color: #475569; margin-top: 0.2rem; }}
+
+    /* Footer */
+    .footer {{
+      text-align: center;
+      padding: 2rem 0 1rem;
+      border-top: 1px solid #1e1e2e;
+      margin-top: 3rem;
+      color: #334155;
+      font-size: 0.8rem;
+    }}
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">⚡ {settings.app_name}</div>
+    <div class="version">v{settings.app_version}</div>
+    <p class="tagline">Secure File Processing API — Image &amp; PDF Conversion, Resize, Edit</p>
+    <div class="status">
+      <div class="dot"></div>
+      API is live and running
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="quick-links">
+    <a href="/docs" class="btn btn-primary">📖 Interactive API Docs (Swagger)</a>
+    <a href="/redoc" class="btn btn-outline">📄 ReDoc Reference</a>
+    <a href="/api/health" class="btn btn-outline">❤️ Health Check</a>
+  </div>
+
+  <!-- Image Endpoints -->
+  <div class="section">
+    <div class="section-title">🖼️ Image Endpoints</div>
+    <div class="card">
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api/image/convert</span>
+        <span class="desc">Convert format (JPG/PNG/WebP/BMP/TIFF/GIF)</span>
+      </div>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api/image/resize</span>
+        <span class="desc">Resize by dimensions or target KB</span>
+      </div>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api/image/edit</span>
+        <span class="desc">Crop, rotate, apply filters</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF Endpoints -->
+  <div class="section">
+    <div class="section-title">📄 PDF Endpoints</div>
+    <div class="card">
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api/pdf/compress</span>
+        <span class="desc">Compress PDF by quality or target KB</span>
+      </div>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api/pdf/convert</span>
+        <span class="desc">Convert PDF pages to images (ZIP)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth & History -->
+  <div class="section">
+    <div class="section-title">🔐 Auth &amp; History</div>
+    <div class="card">
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api/auth/register</span>
+        <span class="desc">Create new account</span>
+      </div>
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="path">/api/auth/login</span>
+        <span class="desc">Login &amp; receive JWT token</span>
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/api/auth/me</span>
+        <span class="desc">Get current user profile</span>
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/api/history</span>
+        <span class="desc">Paginated job history</span>
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/api/download/{{job_id}}</span>
+        <span class="desc">Download processed file</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- System -->
+  <div class="section">
+    <div class="section-title">⚙️ System</div>
+    <div class="card">
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/api/health</span>
+        <span class="desc">App &amp; MongoDB health status</span>
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/docs</span>
+        <span class="desc">Swagger UI — Interactive docs</span>
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/redoc</span>
+        <span class="desc">ReDoc — Full API reference</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="section">
+    <div class="section-title">🛡️ Security Features</div>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-title">MIME Detection</div>
+        <div class="feature-desc">Real magic-byte file type validation, not just extension</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">JWT Auth</div>
+        <div class="feature-desc">Secure token-based authentication with 7-day expiry</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🧹</div>
+        <div class="feature-title">Auto Cleanup</div>
+        <div class="feature-desc">Files auto-deleted every {settings.cleanup_interval_minutes} min after {settings.file_expiry_minutes} min expiry</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🗑️</div>
+        <div class="feature-title">EXIF Stripped</div>
+        <div class="feature-desc">All metadata removed from image outputs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config Info -->
+  <div class="section">
+    <div class="section-title">📊 Server Configuration</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-value">{settings.max_file_size_mb} MB</div>
+        <div class="info-label">Max Upload Size</div>
+      </div>
+      <div class="info-card">
+        <div class="info-value">{settings.file_expiry_minutes} min</div>
+        <div class="info-label">File Expiry (Anonymous)</div>
+      </div>
+      <div class="info-card">
+        <div class="info-value">{settings.auth_expiry_minutes // 60}h</div>
+        <div class="info-label">File Expiry (Auth Users)</div>
+      </div>
+      <div class="info-card">
+        <div class="info-value">{settings.cleanup_interval_minutes} min</div>
+        <div class="info-label">Cleanup Interval</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Built with ⚡ FastAPI + MongoDB &nbsp;·&nbsp; {settings.app_name} v{settings.app_version}
+  </div>
+
+</div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
 
 
 # ── Dev Runner ────────────────────────────────────────────────────────────────
