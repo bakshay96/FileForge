@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, Zap, User, LogOut, Menu, X, Sun, Moon } from "lucide-react";
+import { ChevronDown, Zap, User, LogOut, Menu, X, Sun, Moon, Palette } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/app/providers";
 
@@ -114,6 +114,21 @@ export default function Navbar() {
             )}
           </div>
 
+          {/* Canvas Studio — featured link */}
+          <Link
+            href="/canvas"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition hover:scale-105 active:scale-95"
+            style={{
+              background: "linear-gradient(135deg, rgba(34,211,238,0.15), rgba(99,102,241,0.15))",
+              border: "1px solid rgba(34,211,238,0.3)",
+              color: isLight ? "#0891b2" : "#22d3ee",
+              boxShadow: "0 0 12px rgba(34,211,238,0.15)",
+            }}
+          >
+            <Palette className="w-3 h-3" />
+            Canvas Studio
+          </Link>
+
           <Link
             href="/history"
             className="hover:text-cyan-400 transition"
@@ -204,6 +219,8 @@ export default function Navbar() {
             className="block py-2 text-sm" style={{ color: isLight ? "#475569" : "#e2e8f0" }}>Resize &amp; Edit</Link>
           <Link href="/pdf" onClick={() => setOpenMobile(false)}
             className="block py-2 text-sm" style={{ color: isLight ? "#475569" : "#e2e8f0" }}>PDF Tools</Link>
+          <Link href="/canvas" onClick={() => setOpenMobile(false)}
+            className="block py-2 text-sm font-bold" style={{ color: "#22d3ee" }}>🎨 Canvas Studio</Link>
           <Link href="/history" onClick={() => setOpenMobile(false)}
             className="block py-2 text-sm" style={{ color: isLight ? "#475569" : "#e2e8f0" }}>History</Link>
 
