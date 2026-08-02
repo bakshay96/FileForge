@@ -217,9 +217,18 @@ html, body {
   --color-bg:         #f0f2f8;
   --color-surface:    #ffffff;
   --color-surface-2:  #f5f7fc;
-  --color-border:     rgba(0,0,0,0.1);
+  --color-border:     rgba(0,0,0,0.12);
   --color-text:       #0f1117;
-  --color-text-muted: #64748b;
+  --color-text-muted: #475569;
+
+  --card-bg:          #ffffff;
+  --card-border:      rgba(0,0,0,0.1);
+  --input-bg:         #f1f4fb;
+  --input-border:     rgba(0,0,0,0.15);
+  --input-text:       #0f1117;
+  --ghost-bg:         rgba(0,0,0,0.04);
+  --ghost-text:       #334155;
+  --glow-card-bg:     #ffffff;
 
   /* Canvas editor light overrides */
   --ce-bg:           #dde1ec;
@@ -256,6 +265,23 @@ html, body {
 [data-theme="light"] nav {
   background: rgba(250,251,255,0.88) !important;
   border-color: rgba(0,0,0,0.08) !important;
+}
+
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200 {
+  color: #0f1117 !important;
+}
+
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .glow-card-cyan,
+[data-theme="light"] .glow-card-purple,
+[data-theme="light"] .glow-card-blue {
+  background: #ffffff !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06) !important;
 }
 
 /* ── Canvas Editor Dropdown Menus ───────────────────────────────────────── */
