@@ -31,15 +31,15 @@ const FEATURE_CARDS = [
     badge: "Most Popular",
   },
   {
-    href: "/resize",
+    href: "/canvas",
     icon: Crop,
     iconColor: "text-cyan-400",
     iconBg: "rgba(34,211,238,0.10)",
     borderColor: "rgba(34,211,238,0.22)",
     glowColor: "rgba(34,211,238,0.06)",
-    title: "Resize & Edit",
-    desc: "Batch resize, crop, rotate, enhance & annotate images using our Canvas Studio.",
-    badge: "Premium",
+    title: "Canvas Studio",
+    desc: "All-in-one creative editor: draw, annotate images, edit videos, add music, and apply AI-powered enhancements.",
+    badge: "New",
   },
   {
     href: "/pdf",
@@ -123,9 +123,15 @@ export default function HomePage() {
               Select Files to Convert
               <ArrowRight className="w-4 h-4 opacity-60" />
             </a>
-            <Link href="/resize"
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-sm text-slate-400 border border-white/10 hover:text-white hover:border-white/20 transition">
-              Open Canvas Studio <ChevronRight className="w-3.5 h-3.5" />
+            <Link href="/canvas"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-sm font-semibold transition hover:scale-105 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(34,211,238,0.12), rgba(99,102,241,0.12))",
+                    border: "1px solid rgba(34,211,238,0.3)",
+                    color: "#22d3ee",
+                    boxShadow: "0 0 20px rgba(34,211,238,0.12)",
+                  }}>
+              🎨 Open Canvas Studio <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
