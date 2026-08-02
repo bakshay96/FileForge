@@ -1,5 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap');
 
+/* ── Theme Tokens ────────────────────────────────────────────────────────── */
+/* Canvas Editor CSS variables — dark (default) */
+:root {
+  --ce-bg:           #07090e;
+  --ce-panel:        #0c0f18;
+  --ce-panel-2:      #141824;
+  --ce-border:       rgba(255,255,255,0.07);
+  --ce-border-2:     rgba(255,255,255,0.12);
+  --ce-text:         #e2e8f0;
+  --ce-text-muted:   #94a3b8;
+  --ce-text-dim:     #475569;
+  --ce-text-faint:   #334155;
+  --ce-canvas-area:  #080a10;
+  --ce-accent:       #22d3ee;
+  --ce-brand:        #6366f1;
+  --ce-hover:        rgba(255,255,255,0.04);
+  --ce-hover-2:      rgba(255,255,255,0.08);
+  --ce-section-bg:   rgba(255,255,255,0.03);
+  --ce-input-bg:     #141824;
+  --ce-ruler-bg:     #0a0d15;
+  --ce-ruler-text:   #334155;
+  --ce-ruler-tick:   rgba(255,255,255,0.12);
+  --ce-menu-bg:      #0d1021;
+  --ce-menu-hover:   rgba(99,102,241,0.12);
+  --ce-submenu-bg:   #111422;
+  --ce-submenu-border: rgba(255,255,255,0.08);
+  --ce-infobar-bg:   #0a0d15;
+  --ce-infobar-border: rgba(255,255,255,0.06);
+  --ce-status-bg:    rgba(7,9,14,0.85);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -180,3 +211,165 @@ html, body {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* ── Light Theme ────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --color-bg:         #f0f2f8;
+  --color-surface:    #ffffff;
+  --color-surface-2:  #f5f7fc;
+  --color-border:     rgba(0,0,0,0.1);
+  --color-text:       #0f1117;
+  --color-text-muted: #64748b;
+
+  /* Canvas editor light overrides */
+  --ce-bg:           #dde1ec;
+  --ce-panel:        #ffffff;
+  --ce-panel-2:      #f5f7fc;
+  --ce-border:       rgba(0,0,0,0.08);
+  --ce-border-2:     rgba(0,0,0,0.12);
+  --ce-text:         #0f1117;
+  --ce-text-muted:   #475569;
+  --ce-text-dim:     #64748b;
+  --ce-text-faint:   #94a3b8;
+  --ce-canvas-area:  #e8ecf5;
+  --ce-hover:        rgba(0,0,0,0.04);
+  --ce-hover-2:      rgba(0,0,0,0.08);
+  --ce-section-bg:   rgba(0,0,0,0.03);
+  --ce-input-bg:     #f1f4fb;
+  --ce-ruler-bg:     #eef0f8;
+  --ce-ruler-text:   #94a3b8;
+  --ce-ruler-tick:   rgba(0,0,0,0.15);
+  --ce-menu-bg:      #ffffff;
+  --ce-menu-hover:   rgba(99,102,241,0.08);
+  --ce-submenu-bg:   #fafbff;
+  --ce-submenu-border: rgba(0,0,0,0.08);
+  --ce-infobar-bg:   #eef0f9;
+  --ce-infobar-border: rgba(0,0,0,0.07);
+  --ce-status-bg:    rgba(238,240,249,0.9);
+}
+
+[data-theme="light"] body {
+  background-color: #f0f2f8;
+  color: #0f1117;
+}
+
+[data-theme="light"] nav {
+  background: rgba(250,251,255,0.88) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}
+
+/* ── Canvas Editor Dropdown Menus ───────────────────────────────────────── */
+.ce-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  background: var(--ce-menu-bg);
+  border: 1px solid var(--ce-submenu-border);
+  border-radius: 10px;
+  padding: 4px;
+  z-index: 9999;
+  min-width: 170px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(99,102,241,0.1);
+  animation: ce-dropdown-in 0.12s ease;
+}
+
+.ce-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--ce-text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+  font-family: 'Inter', sans-serif;
+}
+
+.ce-dropdown-item:hover {
+  background: var(--ce-menu-hover);
+  color: var(--ce-text);
+}
+
+.ce-dropdown-separator {
+  height: 1px;
+  background: var(--ce-border);
+  margin: 3px 6px;
+}
+
+.ce-dropdown-shortcut {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--ce-text-faint);
+  font-family: monospace;
+}
+
+@keyframes ce-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* ── Canvas Tool Submenu Flyout ─────────────────────────────────────────── */
+.ce-tool-submenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 8px;
+  right: 8px;
+  background: var(--ce-submenu-bg);
+  border: 1px solid var(--ce-submenu-border);
+  border-radius: 10px;
+  padding: 8px;
+  z-index: 500;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  animation: ce-dropdown-in 0.12s ease;
+}
+
+/* ── Ruler canvas ─────────────────────────────────────────────────────── */
+.ce-ruler-h, .ce-ruler-v {
+  background: var(--ce-ruler-bg);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* ── Scrollbar for canvas panels ──────────────────────────────────────── */
+.ce-panel-scroll::-webkit-scrollbar { width: 4px; }
+.ce-panel-scroll::-webkit-scrollbar-track { background: transparent; }
+.ce-panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(99,102,241,0.25);
+  border-radius: 2px;
+}
+
+/* ── Navbar theme toggle button ──────────────────────────────────────── */
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.theme-toggle-btn:hover {
+  background: rgba(99,102,241,0.12);
+  border-color: rgba(99,102,241,0.3);
+  color: #6366f1;
+}
+[data-theme="light"] .theme-toggle-btn {
+  border-color: rgba(0,0,0,0.1);
+  background: rgba(0,0,0,0.04);
+  color: #475569;
+}
+[data-theme="light"] .theme-toggle-btn:hover {
+  background: rgba(99,102,241,0.1);
+  color: #6366f1;
+}
+
