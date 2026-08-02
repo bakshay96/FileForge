@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ── Theme Tokens ────────────────────────────────────────────────────────── */
 /* Canvas Editor CSS variables — dark (default) */
 :root {
@@ -30,10 +34,6 @@
   --ce-infobar-border: rgba(255,255,255,0.06);
   --ce-status-bg:    rgba(7,9,14,0.85);
 }
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 /* ── Base Reset ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
