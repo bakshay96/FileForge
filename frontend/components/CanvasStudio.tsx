@@ -361,14 +361,16 @@ function NoFileScreen({onFileLoaded,onBlankCanvas,isDark,onShowTour}:{
                    borderBottom:`1px solid ${V("border")}`,display:"flex",alignItems:"center",
                    padding:"0 16px",gap:"8px",justifyContent:"space-between"}}>
         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-          <div style={{width:"22px",height:"22px",borderRadius:"6px",flexShrink:0,
-                       background:"linear-gradient(135deg,#22d3ee,#6366f1)",
-                       display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <Zap size={11} color="#fff" fill="#fff"/>
-          </div>
-          <span style={{fontFamily:"'Outfit',sans-serif",fontWeight:800,fontSize:"14px",color:V("text")}}>
-            File<span style={{color:"#22d3ee"}}>Forge</span>
-          </span>
+          <a href="/" style={{display:"flex",alignItems:"center",gap:"6px",textDecoration:"none"}}>
+            <div style={{width:"22px",height:"22px",borderRadius:"6px",flexShrink:0,
+                         background:"linear-gradient(135deg,#22d3ee,#6366f1)",
+                         display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Zap size={11} color="#fff" fill="#fff"/>
+            </div>
+            <span style={{fontFamily:"'Outfit',sans-serif",fontWeight:800,fontSize:"14px",color:V("text")}}>
+              File<span style={{color:"#22d3ee"}}>Forge</span>
+            </span>
+          </a>
           <span style={{color:V("text-faint"),fontSize:"12px"}}>/ Canvas Studio Pro</span>
         </div>
         <button onClick={onShowTour}
@@ -1176,17 +1178,33 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
               {isOpen&&(
                 <div className="ce-dropdown-menu" onClick={e=>e.stopPropagation()}>
                   {mk==="file"&&<>
-                    <button className="ce-dropdown-item" onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*,audio/*";inp.onchange=e=>{ const f=(e.target as HTMLInputElement).files?.[0]; if(f) handleNewFile(f); };inp.click();setActiveMenu(null);}}>
+                    <button className="ce-dropdown-item" onClick={()=>{
+                      const inp=document.createElement("input");
+                      inp.type="file"; inp.accept="image/*,video/*,audio/*";
+                      inp.onchange=e=>{ const f=(e.target as HTMLInputElement).files?.[0]; if(f) setLoadedFile(f); };
+                      inp.click(); setActiveMenu(null);
+                    }}>
                       <Upload size={12} color="#22d3ee"/> Open Media File…
                     </button>
+                    <button className="ce-dropdown-item" onClick={()=>{ setLoadedFile(null); setFileMode("image"); setActiveMenu(null); }}>
+                      <Square size={12} color="#a855f7"/> New Blank Canvas
+                    </button>
                     {isImage&&<button className="ce-dropdown-item" onClick={()=>{doExport("png");setActiveMenu(null);}}>
-                      <FileDown size={12} color="#06b6d4"/> Export PNG
+                      <FileDown size={12} color="#06b6d4"/> Export PNG Image
                     </button>}
                     {isVideo&&<button className="ce-dropdown-item" onClick={()=>{doExportVideo();setActiveMenu(null);}}>
                       <Film size={12} color="#f97316"/> Export Video (.webm)
                     </button>}
                   </>}
+
                   {mk==="edit"&&<>
+                    <button className="ce-dropdown-item" onClick={()=>{undo();setActiveMenu(null);}} style={{opacity:history.length?1:0.4}}>
+                      <Undo2 size={12} color="#3b82f6"/> Undo <span className="ce-dropdown-shortcut">Ctrl+Z</span>
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{redo();setActiveMenu(null);}} style={{opacity:future.length?1:0.4}}>
+                      <Redo2 size={12} color="#3b82f6"/> Redo <span className="ce-dropdown-shortcut">Ctrl+Y</span>
+                    </button>
+                    <div className="ce-dropdown-separator"/>
                     <button className="ce-dropdown-item" onClick={()=>{copyActiveClip();setActiveMenu(null);}}>
                       <Copy size={12} color="#eab308"/> Copy Selected Clip <span className="ce-dropdown-shortcut">Ctrl+C</span>
                     </button>
@@ -1196,10 +1214,71 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
                     <button className="ce-dropdown-item" onClick={()=>{splitClipAtPlayhead();setActiveMenu(null);}}>
                       <Scissors size={12} color="#f97316"/> Split Clip at Playhead <span className="ce-dropdown-shortcut">S</span>
                     </button>
+                    <div className="ce-dropdown-separator"/>
+                    <button className="ce-dropdown-item" onClick={()=>{clearCanvas();setActiveMenu(null);}}>
+                      <Trash2 size={12} color="#ef4444"/> Clear Canvas
+                    </button>
                   </>}
+
+                  {mk==="view"&&<>
+                    <button className="ce-dropdown-item" onClick={()=>{setZoom(z=>Math.min(4,+(z+0.25).toFixed(2)));setActiveMenu(null);}}>
+                      <ZoomIn size={12} color="#22d3ee"/> Zoom In (+25%) <span className="ce-dropdown-shortcut">+</span>
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{setZoom(z=>Math.max(0.2,+(z-0.25).toFixed(2)));setActiveMenu(null);}}>
+                      <ZoomOut size={12} color="#22d3ee"/> Zoom Out (-25%) <span className="ce-dropdown-shortcut">-</span>
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{setZoom(1);setActiveMenu(null);}}>
+                      <Maximize2 size={12} color="#22d3ee"/> Reset Zoom (100%) <span className="ce-dropdown-shortcut">0</span>
+                    </button>
+                    <div className="ce-dropdown-separator"/>
+                    <button className="ce-dropdown-item" onClick={()=>{setRightPanel(p=>p==="adjust"?"info":"adjust");setActiveMenu(null);}}>
+                      <Palette size={12} color="#a855f7"/> Toggle Adjustments Panel
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{setBrightness(0);setContrast(0);setSaturation(0);setFilter("none");setRotation(0);setFlipH(false);setFlipV(false);setActiveMenu(null);}}>
+                      <RefreshCw size={12} color="#94a3b8"/> Reset Color Adjustments
+                    </button>
+                  </>}
+
+                  {mk==="image"&&<>
+                    <button className="ce-dropdown-item" onClick={()=>{setRotation(r=>(r+90)%360);setActiveMenu(null);}}>
+                      <RotateCw size={12} color="#3b82f6"/> Rotate 90° Clockwise
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{setRotation(r=>(r-90+360)%360);setActiveMenu(null);}}>
+                      <RotateCcw size={12} color="#3b82f6"/> Rotate 90° Counter-Clockwise
+                    </button>
+                    <div className="ce-dropdown-separator"/>
+                    <button className="ce-dropdown-item" onClick={()=>{setFlipH(f=>!f);setActiveMenu(null);}}>
+                      <FlipHorizontal size={12} color="#06b6d4"/> Flip Horizontally
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{setFlipV(f=>!f);setActiveMenu(null);}}>
+                      <FlipVertical size={12} color="#06b6d4"/> Flip Vertically
+                    </button>
+                    <div className="ce-dropdown-separator"/>
+                    <button className="ce-dropdown-item" onClick={()=>{setMainTool("crop");setActiveMenu(null);}}>
+                      <Crop size={12} color="#f97316"/> Crop Tool
+                    </button>
+                  </>}
+
+                  {mk==="filter"&&<>
+                    {FILTERS.map(f=>(
+                      <button key={f.value} className="ce-dropdown-item" onClick={()=>{setFilter(f.value);setActiveMenu(null);}}>
+                        <span>{f.emoji}</span> {f.label} {filter===f.value&&<span style={{marginLeft:"auto",color:"#22d3ee",fontWeight:700}}>✓</span>}
+                      </button>
+                    ))}
+                  </>}
+
+                  {mk==="ai"&&<>
+                    <button className="ce-dropdown-item" onClick={()=>{setBrightness(15);setContrast(20);setSaturation(25);setFilter("vivid");setActiveMenu(null);}}>
+                      <Wand2 size={12} color="#a855f7"/> Auto Color Enhance
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{setAiPalette(["#3b82f6","#22d3ee","#a855f7","#eab308","#22c55e","#ef4444"]);setRightPanel("ai");setActiveMenu(null);}}>
+                      <Palette size={12} color="#ec4899"/> Extract Color Palette
+                    </button>
+                  </>}
+
                   {mk==="help"&&<>
                     <button className="ce-dropdown-item" onClick={()=>{setWtIdx(0);setWtActive(true);setActiveMenu(null);}}>
-                      <HelpCircle size={12} color="#6366f1"/> Start Tour
+                      <HelpCircle size={12} color="#6366f1"/> Start Tour Walkthrough
                     </button>
                   </>}
                 </div>
@@ -1280,38 +1359,178 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
       <div style={{flex:1,display:"flex",overflow:"hidden",minHeight:0}}>
 
         {/* ── LEFT SIDEBAR ── */}
-        <div style={{flexShrink:0,width:"170px",background:V("panel"),borderRight:`1px solid ${V("border")}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* ── LEFT SIDEBAR ── */}
+        <div style={{flexShrink:0,width:"185px",background:V("panel"),borderRight:`1px solid ${V("border")}`,display:"flex",flexDirection:"column",overflow:"auto"}}>
+          {/* Tool Buttons */}
           <div style={{padding:"8px",display:"flex",flexDirection:"column",gap:"2px"}}>
             {([
-              {id:"pen",    icon:<Pencil    size={14}/>, label:"Pen",     c:"#3b82f6", dis:!drawingEnabled},
-              {id:"brush",  icon:<Paintbrush size={14}/>,label:"Brush",   c:"#06b6d4", dis:!drawingEnabled},
-              {id:"shape",  icon:<Square    size={14}/>, label:"Shapes",  c:"#a855f7", dis:!drawingEnabled},
-              {id:"erase",  icon:<Eraser    size={14}/>, label:"Eraser",  c:"#ef4444", dis:!drawingEnabled},
+              {id:"pen",    icon:<Pencil    size={14}/>, label:"Pen",      c:"#3b82f6", dis:!drawingEnabled},
+              {id:"brush",  icon:<Paintbrush size={14}/>,label:"Brush",    c:"#06b6d4", dis:!drawingEnabled},
+              {id:"shape",  icon:<Square    size={14}/>, label:"Shapes",   c:"#a855f7", dis:!drawingEnabled},
+              {id:"erase",  icon:<Eraser    size={14}/>, label:"Eraser",   c:"#ef4444", dis:!drawingEnabled},
               {id:"text",   icon:<Type      size={14}/>, label:"Text Clip",c:"#eab308", dis:!hasFile},
-              {id:"crop",   icon:<Crop      size={14}/>, label:"Crop",    c:"#f97316", dis:!isImage},
-              {id:"blur",   icon:<Blend     size={14}/>, label:"Blur",    c:"#06b6d4", dis:!drawingEnabled},
-              {id:"sticker",icon:<Smile     size={14}/>, label:"Sticker", c:"#a855f7", dis:!drawingEnabled},
+              {id:"crop",   icon:<Crop      size={14}/>, label:"Crop",     c:"#f97316", dis:!isImage},
+              {id:"blur",   icon:<Blend     size={14}/>, label:"Blur",     c:"#06b6d4", dis:!drawingEnabled},
+              {id:"sticker",icon:<Smile     size={14}/>, label:"Sticker",  c:"#a855f7", dis:!drawingEnabled},
             ] as {id:MainTool;icon:React.ReactNode;label:string;c:string;dis:boolean}[]).map(({id,icon,label,c,dis})=>(
               <button key={id} disabled={dis} onClick={()=>setMainTool(id)}
                 style={{width:"100%",display:"flex",alignItems:"center",gap:"8px",padding:"7px 9px",borderRadius:"8px",border:"none",
                         cursor:dis?"not-allowed":"pointer",fontSize:"12px",fontWeight:600,textAlign:"left",
-                        background:mainTool===id?`${c}22`:"transparent",color:mainTool===id?c:dis?V("text-faint"):V("text-dim"),opacity:dis?.45:1}}>
+                        background:mainTool===id?`${c}22`:"transparent",color:mainTool===id?c:dis?V("text-faint"):V("text-dim"),opacity:dis?.45:1,
+                        transition:"all .15s"}}>
                 <span style={{color:dis?V("text-faint"):c}}>{icon}</span>{label}
+                {["pen","brush","shape","erase","blur","sticker"].includes(id)&&!dis&&(
+                  <span style={{marginLeft:"auto",fontSize:"9px",opacity:.5}}>▾</span>
+                )}
               </button>
             ))}
           </div>
 
-          <div style={{height:"1px",background:V("border"),margin:"4px 8px"}}/>
+          <div style={{height:"1px",background:V("border"),margin:"2px 8px"}}/>
 
-          {/* Text Input Block for Video / Image */}
+          {/* ── PEN SUB-OPTIONS ── */}
+          {mainTool==="pen"&&drawingEnabled&&(
+            <div style={{padding:"6px 8px"}}>
+              <p style={{fontSize:"9px",fontWeight:700,color:"#3b82f6",marginBottom:"5px",textTransform:"uppercase",letterSpacing:".06em"}}>Pen Type</p>
+              {PEN_TYPES.map(({id,label,emoji})=>(
+                <button key={id} onClick={()=>setPenType(id as PenType)}
+                  style={{width:"100%",padding:"5px 8px",borderRadius:"6px",border:`1px solid ${penType===id?"#3b82f6":"transparent"}`,
+                          background:penType===id?"rgba(59,130,246,0.15)":"transparent",
+                          color:penType===id?"#3b82f6":V("text-dim"),cursor:"pointer",fontSize:"11px",fontWeight:600,
+                          textAlign:"left",marginBottom:"2px",display:"flex",alignItems:"center",gap:"6px"}}>
+                  <span>{emoji}</span>{label}
+                </button>
+              ))}
+              <div style={{marginTop:"6px"}}>
+                <p style={{fontSize:"9px",color:V("text-faint"),marginBottom:"3px"}}>Size: {penSize}px</p>
+                <input type="range" min={1} max={30} value={penSize} onChange={e=>setPenSize(Number(e.target.value))}
+                  style={{width:"100%",accentColor:"#3b82f6"}}/>
+                <p style={{fontSize:"9px",color:V("text-faint"),marginTop:"4px",marginBottom:"2px"}}>Opacity: {Math.round(penOpacity*100)}%</p>
+                <input type="range" min={10} max={100} value={Math.round(penOpacity*100)} onChange={e=>setPenOpacity(Number(e.target.value)/100)}
+                  style={{width:"100%",accentColor:"#3b82f6"}}/>
+              </div>
+            </div>
+          )}
+
+          {/* ── BRUSH SUB-OPTIONS ── */}
+          {mainTool==="brush"&&drawingEnabled&&(
+            <div style={{padding:"6px 8px"}}>
+              <p style={{fontSize:"9px",fontWeight:700,color:"#06b6d4",marginBottom:"5px",textTransform:"uppercase",letterSpacing:".06em"}}>Brush Type</p>
+              {BRUSH_TYPES.map(({id,label,emoji})=>(
+                <button key={id} onClick={()=>setBrushType(id as BrushType)}
+                  style={{width:"100%",padding:"5px 8px",borderRadius:"6px",border:`1px solid ${brushType===id?"#06b6d4":"transparent"}`,
+                          background:brushType===id?"rgba(6,182,212,0.15)":"transparent",
+                          color:brushType===id?"#06b6d4":V("text-dim"),cursor:"pointer",fontSize:"11px",fontWeight:600,
+                          textAlign:"left",marginBottom:"2px",display:"flex",alignItems:"center",gap:"6px"}}>
+                  <span>{emoji}</span>{label}
+                </button>
+              ))}
+              <div style={{marginTop:"6px"}}>
+                <p style={{fontSize:"9px",color:V("text-faint"),marginBottom:"3px"}}>Size: {brushSize}px</p>
+                <input type="range" min={2} max={80} value={brushSize} onChange={e=>setBrushSize(Number(e.target.value))}
+                  style={{width:"100%",accentColor:"#06b6d4"}}/>
+                <p style={{fontSize:"9px",color:V("text-faint"),marginTop:"4px",marginBottom:"2px"}}>Opacity: {Math.round(brushOpacity*100)}%</p>
+                <input type="range" min={5} max={100} value={Math.round(brushOpacity*100)} onChange={e=>setBrushOpacity(Number(e.target.value)/100)}
+                  style={{width:"100%",accentColor:"#06b6d4"}}/>
+              </div>
+            </div>
+          )}
+
+          {/* ── SHAPE SUB-OPTIONS ── */}
+          {mainTool==="shape"&&drawingEnabled&&(
+            <div style={{padding:"6px 8px"}}>
+              <p style={{fontSize:"9px",fontWeight:700,color:"#a855f7",marginBottom:"5px",textTransform:"uppercase",letterSpacing:".06em"}}>Shape Type</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px",marginBottom:"8px"}}>
+                {SHAPE_TYPES.map(({id,icon,label})=>(
+                  <button key={id} onClick={()=>setShapeType(id as ShapeType)}
+                    style={{padding:"6px 4px",borderRadius:"6px",border:`1px solid ${shapeType===id?"#a855f7":"transparent"}`,
+                            background:shapeType===id?"rgba(168,85,247,0.2)":V("hover"),
+                            color:shapeType===id?"#a855f7":V("text-dim"),cursor:"pointer",fontSize:"10px",fontWeight:600,
+                            display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}>
+                    {icon}{label}
+                  </button>
+                ))}
+              </div>
+              <label style={{display:"flex",alignItems:"center",gap:"6px",fontSize:"10px",color:V("text-dim"),cursor:"pointer",marginBottom:"5px"}}>
+                <input type="checkbox" checked={shapeFill} onChange={e=>setShapeFill(e.target.checked)} style={{accentColor:"#a855f7"}}/>
+                Fill Shape
+              </label>
+              <p style={{fontSize:"9px",color:V("text-faint"),marginBottom:"2px"}}>Stroke: {shapeLineW}px</p>
+              <input type="range" min={1} max={20} value={shapeLineW} onChange={e=>setShapeLineW(Number(e.target.value))}
+                style={{width:"100%",accentColor:"#a855f7"}}/>
+            </div>
+          )}
+
+          {/* ── ERASER SUB-OPTIONS ── */}
+          {mainTool==="erase"&&drawingEnabled&&(
+            <div style={{padding:"6px 8px"}}>
+              <p style={{fontSize:"9px",fontWeight:700,color:"#ef4444",marginBottom:"5px",textTransform:"uppercase",letterSpacing:".06em"}}>Eraser</p>
+              <p style={{fontSize:"9px",color:V("text-faint"),marginBottom:"3px"}}>Size: {eraserSize}px</p>
+              <input type="range" min={4} max={100} value={eraserSize} onChange={e=>setEraserSize(Number(e.target.value))}
+                style={{width:"100%",accentColor:"#ef4444"}}/>
+              <button onClick={clearCanvas}
+                style={{width:"100%",marginTop:"8px",padding:"6px",borderRadius:"6px",border:"1px solid rgba(239,68,68,0.3)",
+                        background:"rgba(239,68,68,0.1)",color:"#ef4444",fontSize:"10px",fontWeight:700,cursor:"pointer"}}>
+                🗑️ Clear All
+              </button>
+            </div>
+          )}
+
+          {/* ── BLUR SUB-OPTIONS ── */}
+          {mainTool==="blur"&&drawingEnabled&&(
+            <div style={{padding:"6px 8px"}}>
+              <p style={{fontSize:"9px",fontWeight:700,color:"#06b6d4",marginBottom:"5px",textTransform:"uppercase",letterSpacing:".06em"}}>Blur Brush</p>
+              <p style={{fontSize:"9px",color:V("text-faint"),marginBottom:"3px"}}>Radius: {blurRadius}px</p>
+              <input type="range" min={2} max={40} value={blurRadius} onChange={e=>setBlurRadius(Number(e.target.value))}
+                style={{width:"100%",accentColor:"#06b6d4"}}/>
+              <p style={{fontSize:"9px",color:V("text-faint"),marginTop:"6px",lineHeight:1.5}}>Click or drag on canvas to blur areas.</p>
+            </div>
+          )}
+
+          {/* ── STICKER SUB-OPTIONS ── */}
+          {mainTool==="sticker"&&drawingEnabled&&(
+            <div style={{padding:"6px 8px"}}>
+              <p style={{fontSize:"9px",fontWeight:700,color:"#a855f7",marginBottom:"5px",textTransform:"uppercase",letterSpacing:".06em"}}>Pick Sticker</p>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"4px"}}>
+                {STICKERS.map(s=>(
+                  <button key={s} onClick={()=>setSelSticker(s)}
+                    style={{padding:"5px",borderRadius:"6px",border:`1px solid ${selSticker===s?"#a855f7":"transparent"}`,
+                            background:selSticker===s?"rgba(168,85,247,0.2)":V("hover"),fontSize:"15px",cursor:"pointer",lineHeight:1}}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <p style={{fontSize:"9px",color:V("text-faint"),marginTop:"6px"}}>Selected: {selSticker} — click canvas to stamp.</p>
+            </div>
+          )}
+
+          {/* ── TEXT INPUT ── */}
           {mainTool==="text"&&(
-            <div style={{padding:"8px"}}>
+            <div style={{padding:"6px 8px"}}>
+              <p style={{fontSize:"9px",fontWeight:700,color:"#eab308",marginBottom:"5px",textTransform:"uppercase",letterSpacing:".06em"}}>Text Tool</p>
               <textarea value={textInput} onChange={e=>setTextInput(e.target.value)}
                 placeholder="Type text overlay…" rows={3}
                 style={{width:"100%",borderRadius:"6px",padding:"6px",fontSize:"11px",color:V("text"),
-                        background:V("input-bg"),border:`1px solid ${V("border")}`,outline:"none",resize:"none"}}/>
-              <p style={{fontSize:"9px",color:V("text-faint"),marginTop:"4px"}}>
-                {isVideo?"Click canvas to add timed text clip at current timestamp.":"Click canvas to draw text."}
+                        background:V("input-bg"),border:`1px solid ${V("border")}`,outline:"none",resize:"none",marginBottom:"5px"}}/>
+              <div style={{display:"flex",gap:"4px",marginBottom:"5px"}}>
+                <button onClick={()=>setBold(b=>!b)}
+                  style={{flex:1,padding:"4px",borderRadius:"5px",border:`1px solid ${bold?"#eab308":V("border")}`,
+                          background:bold?"rgba(234,179,8,0.15)":"transparent",color:bold?"#eab308":V("text-dim"),
+                          fontWeight:700,fontSize:"11px",cursor:"pointer"}}>
+                  B
+                </button>
+                <button onClick={()=>setItalic(b=>!b)}
+                  style={{flex:1,padding:"4px",borderRadius:"5px",border:`1px solid ${italic?"#eab308":V("border")}`,
+                          background:italic?"rgba(234,179,8,0.15)":"transparent",color:italic?"#eab308":V("text-dim"),
+                          fontStyle:"italic",fontSize:"11px",cursor:"pointer"}}>
+                  I
+                </button>
+              </div>
+              <p style={{fontSize:"9px",color:V("text-faint"),marginBottom:"2px"}}>Size: {fontSz}px</p>
+              <input type="range" min={10} max={120} value={fontSz} onChange={e=>setFontSz(Number(e.target.value))}
+                style={{width:"100%",accentColor:"#eab308",marginBottom:"4px"}}/>
+              <p style={{fontSize:"9px",color:V("text-faint"),marginTop:"2px"}}>
+                {isVideo?"Click canvas → adds timed clip at playhead.":"Click canvas to place text."}
               </p>
             </div>
           )}

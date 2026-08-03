@@ -399,3 +399,21 @@ html, body {
   color: #6366f1;
 }
 
+/* ── Coverflow Carousel Animations ─────────────────────────────────────── */
+@keyframes spin-slow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes spin-slow-rev {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(-360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 25s linear infinite;
+}
+.animate-spin-slow-rev {
+  animation: spin-slow-rev 18s linear infinite;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}

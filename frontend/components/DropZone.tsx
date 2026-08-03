@@ -36,8 +36,11 @@ export default function DropZone({
         return;
       }
       if (accepted.length > 0) {
-        setSelectedFile(accepted[0]);
-        onFileSelected(accepted[0]);
+        const file = accepted[0];
+        setSelectedFile(file);
+        // Defer the parent callback so React has time to render the file
+        // preview before any navigation/state change fires (fixes first-render bug)
+        setTimeout(() => onFileSelected(file), 0);
       }
     },
     [onFileSelected]
