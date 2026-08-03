@@ -98,6 +98,60 @@ html, body {
   box-shadow: 0 0 35px rgba(139, 92, 246, 0.35), inset 0 0 20px rgba(139, 92, 246, 0.1);
 }
 
+/* ── 3D Card Flip & Feature Animations ────────────────────────────────────── */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+@keyframes lightning-flash {
+  0%, 100% { opacity: 0.4; transform: scale(1); filter: drop-shadow(0 0 2px #eab308); }
+  50% { opacity: 1; transform: scale(1.15); filter: drop-shadow(0 0 12px #facc15); }
+}
+
+@keyframes shield-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(74, 222, 128, 0.3)); }
+  50% { transform: scale(1.1); filter: drop-shadow(0 0 14px rgba(74, 222, 128, 0.7)); }
+}
+
+@keyframes format-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes stack-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-lightning {
+  animation: lightning-flash 1.6s infinite ease-in-out;
+}
+
+.animate-shield-pulse {
+  animation: shield-pulse 2s infinite ease-in-out;
+}
+
+.animate-format-spin {
+  animation: format-spin 7s linear infinite;
+}
+
+.animate-stack-float {
+  animation: stack-float 2.4s ease-in-out infinite;
+}
+
 .glow-card-blue {
   background: rgba(15, 17, 23, 0.7);
   border: 1.5px solid rgba(59, 130, 246, 0.4);

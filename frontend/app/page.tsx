@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Camera, Crop, FileText, Clock, Cloud, ArrowRight, Zap, Shield,
   RefreshCw, Layers, ChevronRight, CheckCircle, Download, Trash2,
-  Lock, Frame, Wand2, ChevronLeft,
+  Lock, Frame, Wand2, ChevronLeft, Sparkles,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import DropZone from "@/components/DropZone";
@@ -637,6 +637,417 @@ function CoverflowCarousel({ isLight }: { isLight: boolean }) {
 
 
 /* ════════════════════════════════════════════════════════
+   WHY FILEFORGE SECTION — Interactive 3D Flip Cards & Staggered Scroll Animations
+════════════════════════════════════════════════════════ */
+interface WhyItem {
+  id: string;
+  icon: any;
+  iconClass: string;
+  badge: string;
+  color: string;
+  accentRgb: string;
+  borderHover: string;
+  bg: string;
+  title: string;
+  desc: string;
+  frontWidget: React.ReactNode;
+  backHeader: string;
+  stats: { label: string; val: string }[];
+  backFeatures: string[];
+  linkText: string;
+  linkHref: string;
+}
+
+function WhyFileForgeCard({
+  item,
+  index,
+  isVisible,
+  isLight,
+}: {
+  item: WhyItem;
+  index: number;
+  isVisible: boolean;
+  isLight: boolean;
+}) {
+  const [flipped, setFlipped] = useState(false);
+  const Icon = item.icon;
+
+  return (
+    <div
+      className="perspective-1000 w-full min-h-[260px] cursor-pointer select-none"
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translateY(0) scale(1)" : "translateY(36px) scale(0.94)",
+        transition: `opacity 700ms cubic-bezier(0.16, 1, 0.3, 1) ${index * 140}ms, transform 700ms cubic-bezier(0.16, 1, 0.3, 1) ${index * 140}ms`,
+      }}
+      onMouseEnter={() => setFlipped(true)}
+      onMouseLeave={() => setFlipped(false)}
+      onClick={() => setFlipped((f) => !f)}
+    >
+      <div
+        className={`relative w-full h-full min-h-[260px] transition-transform duration-700 transform-style-3d ${
+          flipped ? "rotate-y-180" : ""
+        }`}
+      >
+        {/* ── FRONT FACE ── */}
+        <div
+          className="absolute inset-0 w-full h-full rounded-2xl p-5 border flex flex-col justify-between backface-hidden shadow-lg transition-all duration-300 overflow-hidden"
+          style={{
+            background: isLight ? "rgba(255,255,255,0.85)" : "linear-gradient(145deg, #0d101a 0%, #111624 100%)",
+            borderColor: flipped
+              ? item.color
+              : isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.09)",
+            boxShadow: flipped
+              ? `0 0 25px rgba(${item.accentRgb}, 0.25)`
+              : isLight ? "0 4px 20px rgba(0,0,0,0.04)" : "0 4px 20px rgba(0,0,0,0.4)",
+          }}
+        >
+          {/* Top Bar: Icon + Badge */}
+          <div className="flex items-center justify-between">
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center relative ${item.iconClass}`}
+              style={{ background: item.bg }}
+            >
+              <Icon className="w-5.5 h-5.5" style={{ color: item.color }} />
+              {/* Outer glowing aura */}
+              <div
+                className="absolute inset-0 rounded-xl opacity-30 pointer-events-none"
+                style={{ boxShadow: `0 0 16px ${item.color}` }}
+              />
+            </div>
+            <span
+              className="text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider border"
+              style={{
+                color: item.color,
+                background: `rgba(${item.accentRgb}, 0.12)`,
+                borderColor: `rgba(${item.accentRgb}, 0.3)`,
+              }}
+            >
+              {item.badge}
+            </span>
+          </div>
+
+          {/* Center Info */}
+          <div className="my-3">
+            <h3
+              className="text-base font-extrabold mb-1"
+              style={{ fontFamily: "'Outfit',sans-serif", color: isLight ? "#0f1117" : "#f1f5f9" }}
+            >
+              {item.title}
+            </h3>
+            <p className="text-[11px] leading-relaxed" style={{ color: isLight ? "#475569" : "#94a3b8" }}>
+              {item.desc}
+            </p>
+          </div>
+
+          {/* Micro Feature Widget */}
+          <div className="mt-auto pt-2 border-t" style={{ borderColor: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)" }}>
+            {item.frontWidget}
+            <div className="flex items-center justify-between mt-2.5 text-[9px] font-bold" style={{ color: isLight ? "#94a3b8" : "#64748b" }}>
+              <span className="flex items-center gap-1">
+                <RefreshCw className="w-2.5 h-2.5 opacity-60 animate-spin" style={{ animationDuration: "8s" }} />
+                Hover / Tap to Flip
+              </span>
+              <span style={{ color: item.color }} className="flex items-center gap-0.5">
+                Specs <ArrowRight className="w-2.5 h-2.5" />
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── BACK FACE (FLIPPED 180°) ── */}
+        <div
+          className="absolute inset-0 w-full h-full rounded-2xl p-5 border flex flex-col justify-between backface-hidden rotate-y-180 shadow-2xl overflow-hidden"
+          style={{
+            background: isLight ? "#ffffff" : "linear-gradient(145deg, #101424 0%, #0a0d18 100%)",
+            borderColor: item.color,
+            boxShadow: `0 0 30px rgba(${item.accentRgb}, 0.3), inset 0 0 15px rgba(${item.accentRgb}, 0.1)`,
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: `rgba(${item.accentRgb}, 0.25)` }}>
+            <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5" style={{ color: item.color }}>
+              <Icon className="w-3.5 h-3.5" /> {item.backHeader}
+            </span>
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded text-white" style={{ background: item.color }}>
+              PRO
+            </span>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-2 my-2 text-center">
+            {item.stats.map((st) => (
+              <div
+                key={st.label}
+                className="p-1.5 rounded-lg border"
+                style={{
+                  background: `rgba(${item.accentRgb}, ${isLight ? "0.05" : "0.1"})`,
+                  borderColor: `rgba(${item.accentRgb}, 0.2)`,
+                }}
+              >
+                <div className="text-xs font-black" style={{ color: item.color }}>
+                  {st.val}
+                </div>
+                <div className="text-[8px] font-semibold" style={{ color: isLight ? "#64748b" : "#94a3b8" }}>
+                  {st.label}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Key Bullet Features */}
+          <div className="space-y-1 my-1">
+            {item.backFeatures.map((feat, i) => (
+              <div key={i} className="flex items-center gap-1.5 text-[10px] font-medium" style={{ color: isLight ? "#334155" : "#cbd5e1" }}>
+                <span className="w-1 h-1 rounded-full" style={{ background: item.color }} />
+                <span>{feat}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom Action */}
+          <div className="pt-2 border-t mt-auto" style={{ borderColor: `rgba(${item.accentRgb}, 0.2)` }}>
+            <Link
+              href={item.linkHref}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center justify-between w-full text-[10px] font-bold px-3 py-1.5 rounded-lg text-white transition hover:opacity-90 active:scale-95"
+              style={{ background: item.color }}
+            >
+              <span>{item.linkText}</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WhyFileForgeSection({ isLight }: { isLight: boolean }) {
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const WHY_ITEMS: WhyItem[] = [
+    {
+      id: "fast",
+      icon: Zap,
+      iconClass: "animate-lightning",
+      badge: "⚡ < 0.4s Avg",
+      color: "#facc15",
+      accentRgb: "250,204,21",
+      borderHover: "rgba(250,204,21,0.8)",
+      bg: "rgba(234,179,8,0.12)",
+      title: "Lightning Fast",
+      desc: "Server-side conversion in seconds with parallel processing.",
+      frontWidget: (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[9px] font-bold">
+            <span className="text-yellow-400">Processing Speed</span>
+            <span className="text-yellow-300">99.8% Faster</span>
+          </div>
+          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
+            <div
+              className="h-full rounded-full animate-pulse"
+              style={{
+                width: "92%",
+                background: "linear-gradient(90deg, #eab308, #facc15)",
+                boxShadow: "0 0 8px #facc15",
+              }}
+            />
+          </div>
+        </div>
+      ),
+      backHeader: "Speed Specs",
+      stats: [
+        { label: "Avg Latency", val: "0.35s" },
+        { label: "GPU Cores", val: "8x Cores" },
+      ],
+      backFeatures: [
+        "Multi-threaded streaming conversion",
+        "Parallel chunk processing engines",
+        "Zero queue waiting time",
+      ],
+      linkText: "Try Quick Converter",
+      linkHref: "/convert",
+    },
+    {
+      id: "secure",
+      icon: Shield,
+      iconClass: "animate-shield-pulse",
+      badge: "🔒 Auto-Purge 1h",
+      color: "#4ade80",
+      accentRgb: "74,222,128",
+      borderHover: "rgba(74,222,128,0.8)",
+      bg: "rgba(74,222,128,0.12)",
+      title: "100% Secure",
+      desc: "Files auto-deleted after 1 hour. End-to-end privacy guaranteed.",
+      frontWidget: (
+        <div className="flex items-center justify-between p-1.5 rounded-lg border text-[9px]" style={{ background: "rgba(74,222,128,0.08)", borderColor: "rgba(74,222,128,0.25)" }}>
+          <span className="flex items-center gap-1 font-bold text-green-400">
+            <Lock className="w-3 h-3 text-green-400 animate-pulse" /> Auto-Purge Active
+          </span>
+          <span className="font-extrabold text-green-300">59m 59s</span>
+        </div>
+      ),
+      backHeader: "Privacy Specs",
+      stats: [
+        { label: "Permanent Logs", val: "0 Logs" },
+        { label: "Encryption", val: "AES-256" },
+      ],
+      backFeatures: [
+        "Zero-knowledge server memory",
+        "Auto-delete purge after 60 min",
+        "SSL / TLS 1.3 End-to-End Tunnel",
+      ],
+      linkText: "View Privacy Policy",
+      linkHref: "/privacy",
+    },
+    {
+      id: "formats",
+      icon: RefreshCw,
+      iconClass: "animate-format-spin",
+      badge: "📑 54+ Formats",
+      color: "#60a5fa",
+      accentRgb: "96,165,250",
+      borderHover: "rgba(96,165,250,0.8)",
+      bg: "rgba(96,165,250,0.12)",
+      title: "50+ Formats",
+      desc: "Image, PDF, Audio, Video — all under one roof.",
+      frontWidget: (
+        <div className="flex items-center justify-around gap-1">
+          {["PNG", "PDF", "WEBP", "MP4"].map((fmt, idx) => (
+            <span
+              key={fmt}
+              className="text-[8px] font-black px-1.5 py-0.5 rounded border"
+              style={{
+                background: idx === 0 ? "rgba(96,165,250,0.2)" : "rgba(255,255,255,0.05)",
+                color: idx === 0 ? "#93c5fd" : "#94a3b8",
+                borderColor: idx === 0 ? "rgba(96,165,250,0.4)" : "rgba(255,255,255,0.1)",
+              }}
+            >
+              {fmt}
+            </span>
+          ))}
+        </div>
+      ),
+      backHeader: "Format Specs",
+      stats: [
+        { label: "Image Formats", val: "18 Types" },
+        { label: "AV Codecs", val: "22 Codecs" },
+      ],
+      backFeatures: [
+        "Lossless vector & raster engine",
+        "Custom DPI & compression sliders",
+        "Batch multi-file converting",
+      ],
+      linkText: "Explore Formats",
+      linkHref: "/convert",
+    },
+    {
+      id: "studio",
+      icon: Layers,
+      iconClass: "animate-stack-float",
+      badge: "🎬 Multi-Track AI",
+      color: "#c084fc",
+      accentRgb: "192,132,252",
+      borderHover: "rgba(192,132,252,0.8)",
+      bg: "rgba(196,181,253,0.12)",
+      title: "Canvas Studio",
+      desc: "Multi-track editor with video trim, audio layer & AI tools.",
+      frontWidget: (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[9px] font-bold">
+            <span className="text-purple-400">Multi-Track Layers</span>
+            <span className="text-purple-300">AI Enabled</span>
+          </div>
+          <div className="flex gap-1 h-1.5">
+            <div className="flex-1 bg-purple-500 rounded-full opacity-90 animate-pulse" />
+            <div className="flex-1 bg-cyan-400 rounded-full opacity-70" />
+            <div className="flex-1 bg-pink-400 rounded-full opacity-80" />
+          </div>
+        </div>
+      ),
+      backHeader: "Studio Specs",
+      stats: [
+        { label: "Tracks", val: "4-Layer" },
+        { label: "Export", val: "4K 60fps" },
+      ],
+      backFeatures: [
+        "Timed text clip & audio cut layers",
+        "1-Click AI Auto-Enhance & Palette",
+        "Histogram color tuning controls",
+      ],
+      linkText: "Open Canvas Studio",
+      linkHref: "/canvas",
+    },
+  ];
+
+  return (
+    <section ref={sectionRef} className="max-w-6xl mx-auto px-6 pb-16 w-full">
+      <div
+        className="rounded-2xl border p-8 shadow-xl relative overflow-hidden transition-all duration-700"
+        style={{
+          background: isLight
+            ? "rgba(255,255,255,0.85)"
+            : "linear-gradient(135deg, #0f1117 0%, #12182b 100%)",
+          borderColor: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
+        }}
+      >
+        {/* Background ambient lighting */}
+        <div
+          className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 rounded-full pointer-events-none opacity-20"
+          style={{ background: "radial-gradient(ellipse, #6366f1, transparent 70%)", filter: "blur(60px)" }}
+        />
+
+        <div className="text-center mb-8 relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border mb-2 text-cyan-400 border-cyan-500/30 bg-cyan-500/10">
+            <Sparkles className="w-3 h-3 text-cyan-300 animate-spin" style={{ animationDuration: "10s" }} />
+            Core Capabilities
+          </div>
+          <h2
+            className="text-2xl md:text-3xl font-extrabold mb-1"
+            style={{ fontFamily: "'Outfit',sans-serif", color: isLight ? "#0f1117" : "#f1f5f9" }}
+          >
+            Why FileForge?
+          </h2>
+          <p className="text-xs max-w-lg mx-auto" style={{ color: isLight ? "#64748b" : "#94a3b8" }}>
+            Built for professionals who demand speed, security, and beauty. Hover or tap any card to view detailed specifications.
+          </p>
+        </div>
+
+        {/* 4 Cards Grid with Staggered Entrance & 3D Flip */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 relative z-10">
+          {WHY_ITEMS.map((item, idx) => (
+            <WhyFileForgeCard
+              key={item.id}
+              item={item}
+              index={idx}
+              isVisible={isVisible}
+              isLight={isLight}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+/* ════════════════════════════════════════════════════════
    MAIN HOME PAGE
 ════════════════════════════════════════════════════════ */
 export default function HomePage() {
@@ -646,13 +1057,6 @@ export default function HomePage() {
   const handleFileSelected = (_file: File) => {
     window.location.href = "/convert";
   };
-
-  const WHY_ITEMS = [
-    { icon: Zap,       color: "text-yellow-400", bg: "rgba(234,179,8,0.1)",   title: "Lightning Fast",  desc: "Server-side conversion in seconds with parallel processing." },
-    { icon: Shield,    color: "text-green-400",  bg: "rgba(74,222,128,0.1)",  title: "100% Secure",     desc: "Files auto-deleted after 1 hour. End-to-end privacy guaranteed." },
-    { icon: RefreshCw, color: "text-blue-400",   bg: "rgba(96,165,250,0.1)",  title: "50+ Formats",     desc: "Image, PDF, Audio, Video — all under one roof." },
-    { icon: Layers,    color: "text-purple-400", bg: "rgba(196,181,253,0.1)", title: "Canvas Studio",   desc: "Multi-track editor with video trim, audio layer & AI tools." },
-  ];
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--color-bg)", color: isLight ? "#0f1117" : "#f1f5f9" }}>
@@ -706,31 +1110,8 @@ export default function HomePage() {
         <CoverflowCarousel isLight={isLight} />
       </section>
 
-      {/* ── Why FileForge ── */}
-      <section className="max-w-6xl mx-auto px-6 pb-16 w-full">
-        <div className="rounded-2xl border p-8 shadow-xl"
-             style={{
-               background: isLight ? "rgba(255,255,255,0.8)" : "linear-gradient(135deg,#0f1117 0%,#12182b 100%)",
-               borderColor: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
-             }}>
-          <h2 className="text-xl font-bold mb-1 text-center" style={{ fontFamily: "'Outfit',sans-serif", color: isLight ? "#0f1117" : "#f1f5f9" }}>
-            Why FileForge?
-          </h2>
-          <p className="text-xs text-center mb-8" style={{ color: isLight ? "#64748b" : "#64748b" }}>Built for professionals who demand speed, security, and beauty.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {WHY_ITEMS.map(({ icon: Icon, color, bg, title, desc }) => (
-              <div key={title} className="text-center p-4 rounded-xl border transition"
-                   style={{ background: isLight ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.02)", borderColor: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ background: bg }}>
-                  <Icon className={`w-5 h-5 ${color}`} />
-                </div>
-                <h3 className="text-sm font-bold mb-1" style={{ fontFamily: "'Outfit',sans-serif", color: isLight ? "#0f1117" : "#f1f5f9" }}>{title}</h3>
-                <p className="text-[11px] leading-relaxed" style={{ color: isLight ? "#64748b" : "#94a3b8" }}>{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ── Why FileForge (Interactive 3D Cards) ── */}
+      <WhyFileForgeSection isLight={isLight} />
 
       {/* ── Quick Start Dropzone ── */}
       <section id="quick-start-dropzone" className="max-w-6xl mx-auto px-6 mb-16 w-full">
@@ -771,4 +1152,6 @@ export default function HomePage() {
     </div>
   );
 }
+
+
 
