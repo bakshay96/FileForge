@@ -117,3 +117,27 @@ def pdf_to_images(
         f"{zip_path.name} ({zip_size//1024}KB)"
     )
     return zip_path, zip_size
+
+
+def extract_pdf_ocr(pdf_bytes: bytes) -> tuple[Path, int, str]:
+    """
+    Extract text content from PDF pages.
+    
+    Returns:
+        Tuple of (output_txt_path, size_bytes, extracted_text).
+    """
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    extracted_pages = []
+    for i, page in enumerate(doc):
+        page_text = page.get_text()
+        extracted_pages.append(f"--- Page {i + 1} ---\n" + (page_text.strip() or "[No text content found]"))
+    doc.close()
+
+    full_text = "\n\n".join(extracted_pages)
+    output_path = generate_safe_filepath("txt")
+    output_path.write_text(full_text, encoding="utf-8")
+    actual_size = output_path.stat().st_size
+
+    logger.info(f"PDF OCR text extracted: {len(extracted_pages)} pages → {output_path.name}")
+    return output_path, actual_size, full_text
+

@@ -7,7 +7,7 @@ import DropZone from "@/components/DropZone";
 import FilePreview from "@/components/FilePreview";
 import FormatSelect from "@/components/FormatSelect";
 import ResultPanel from "@/components/ResultPanel";
-import { compressPdf, convertPdfToImages, JobResponse } from "@/lib/api";
+import { compressPdf, convertPdfToImages, ocrPdf, JobResponse } from "@/lib/api";
 import { FileText, Archive, Minimize2, History } from "lucide-react";
 
 type Mode = "compress" | "convert" | "ocr" | "pageOrganizer";
@@ -58,6 +58,8 @@ export default function PdfPage() {
           },
           setProgress
         );
+      } else if (mode === "ocr") {
+        job = await ocrPdf(file, setProgress);
       } else {
         job = await convertPdfToImages(
           file,

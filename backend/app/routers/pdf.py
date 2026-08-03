@@ -229,3 +229,67 @@ async def convert_pdf_to_images(
         expires_at=job.expires_at,
         created_at=job.created_at,
     )
+
+
+# ── PDF OCR Text Extraction ───────────────────────────────────────────────────
+
+
+@router.post(
+    "/ocr",
+    response_model=JobResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Extract text from PDF (OCR)",
+    description="Extract plain text content from PDF pages and return as downloadable TXT.",
+)
+async def ocr_pdf(
+    request: Request,
+    file: UploadFile = File(..., description="PDF file to extract text from"),
+    auth_payload: Optional[dict] = Depends(get_current_user),
+):
+    file_bytes = await file.read()
+    try:
+        validate_pdf_file(file_bytes, file.filename or "upload.pdf")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    job = _create_job_instance(
+        request, auth_payload, file.filename or "upload.pdf", OperationType.PDF_COMPRESS, "txt"
+    )
+    await _save_job(job)
+
+    try:
+        output_path, size, _text = pdf_service.extract_pdf_ocr(file_bytes)
+        job.status = JobStatus.COMPLETED
+        job.output_path = str(output_path)
+        job.output_filename = generate_output_filename(job.original_filename, "txt", "ocr")
+        job.file_size_bytes = size
+    except Exception as exc:
+        logger.error(f"PDF OCR failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    db = await get_database()
+    await db["file_jobs"].update_one(
+        {"job_id": job.job_id},
+        {
+            "$set": {
+                "status": job.status,
+                "output_path": job.output_path,
+                "output_filename": job.output_filename,
+                "file_size_bytes": job.file_size_bytes,
+            }
+        },
+    )
+
+    return JobResponse(
+        job_id=job.job_id,
+        status=job.status,
+        operation=job.operation,
+        original_filename=job.original_filename,
+        output_format="txt",
+        output_filename=job.output_filename,
+        file_size_bytes=job.file_size_bytes,
+        download_url=f"/api/download/{job.job_id}",
+        expires_at=job.expires_at,
+        created_at=job.created_at,
+    )
+
