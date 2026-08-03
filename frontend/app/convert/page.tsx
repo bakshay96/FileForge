@@ -30,13 +30,16 @@ const ACCEPT_IMAGE = {
 };
 
 export default function ConvertPage() {
-  const [file,       setFile]       = useState<File | null>(null);
-  const [format,     setFormat]     = useState("webp");
-  const [quality,    setQuality]    = useState(85);
-  const [progress,   setProgress]   = useState(0);
-  const [processing, setProcessing] = useState(false);
-  const [result,     setResult]     = useState<JobResponse | null>(null);
-  const [error,      setError]      = useState<string | null>(null);
+  const [file,             setFile]             = useState<File | null>(null);
+  const [format,           setFormat]           = useState("webp");
+  const [quality,          setQuality]          = useState(85);
+  const [enableWatermark,  setEnableWatermark]  = useState(false);
+  const [watermarkText,    setWatermarkText]    = useState("© FileForge PRO");
+  const [watermarkOpacity, setWatermarkOpacity] = useState(50);
+  const [progress,         setProgress]         = useState(0);
+  const [processing,       setProcessing]       = useState(false);
+  const [result,           setResult]           = useState<JobResponse | null>(null);
+  const [error,            setError]            = useState<string | null>(null);
 
   const handleConvert = async () => {
     if (!file) return;
@@ -95,9 +98,9 @@ export default function ConvertPage() {
           </div>
 
           {/* Options */}
-          <div className="glass-card p-5">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Sliders className="w-3.5 h-3.5" /> 2. Choose Output Format & Settings
+          <div className="glass-card p-5 space-y-4">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <Sliders className="w-3.5 h-3.5" /> 2. Choose Output Format &amp; Watermark Settings
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -124,6 +127,53 @@ export default function ConvertPage() {
                   <span>Small File</span><span>High Quality</span>
                 </div>
               </div>
+            </div>
+
+            {/* Watermark Stamper Option (PRO) */}
+            <div className="border-t border-white/10 pt-4 mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableWatermark}
+                    onChange={(e) => setEnableWatermark(e.target.checked)}
+                    className="accent-cyan-400 rounded"
+                  />
+                  <span>Stamp Image Watermark (PRO)</span>
+                </label>
+                <span className="text-[9px] font-extrabold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  NEW
+                </span>
+              </div>
+
+              {enableWatermark && (
+                <div className="space-y-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20 mt-2">
+                  <div>
+                    <label className="text-[11px] text-slate-400 mb-1 block">Watermark Text</label>
+                    <input
+                      type="text"
+                      className="forge-input text-xs"
+                      placeholder="e.g. © 2026 ABTech / FileForge PRO"
+                      value={watermarkText}
+                      onChange={(e) => setWatermarkText(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-400 mb-1 flex justify-between">
+                      <span>Watermark Opacity:</span>
+                      <span className="font-mono text-cyan-300 font-bold">{watermarkOpacity}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={10}
+                      max={100}
+                      value={watermarkOpacity}
+                      onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
+                      className="w-full accent-cyan-400 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

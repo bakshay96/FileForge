@@ -1189,6 +1189,65 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
                     <button className="ce-dropdown-item" onClick={()=>{ setLoadedFile(null); setFileMode("image"); setActiveMenu(null); }}>
                       <Square size={12} color="#a855f7"/> New Blank Canvas
                     </button>
+                    <div className="ce-dropdown-separator"/>
+                    <button className="ce-dropdown-item" onClick={()=>{
+                      const projectData = {
+                        version: "2.0",
+                        appName: "FileForge Canvas Studio PRO",
+                        createdAt: new Date().toISOString(),
+                        canvasDims,
+                        aspectRatio,
+                        brightness,
+                        contrast,
+                        saturation,
+                        filter,
+                        rotation,
+                        flipH,
+                        flipV,
+                        textClips,
+                        fileMode,
+                        fileName: loadedFile?.name || "Untitled Canvas",
+                      };
+                      const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${loadedFile?.name?.split(".")[0] || "project"}.forge`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      setActiveMenu(null);
+                    }}>
+                      <Save size={12} color="#eab308"/> Save Project (.forge)
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{
+                      const inp=document.createElement("input");
+                      inp.type="file"; inp.accept=".forge,application/json";
+                      inp.onchange=e=>{
+                        const f=(e.target as HTMLInputElement).files?.[0];
+                        if(!f) return;
+                        const r=new FileReader();
+                        r.onload=evt=>{
+                          try {
+                            const data=JSON.parse(evt.target?.result as string);
+                            if(data.canvasDims) setCanvasDims(data.canvasDims);
+                            if(data.aspectRatio) setAspectRatio(data.aspectRatio);
+                            if(data.brightness!==undefined) setBrightness(data.brightness);
+                            if(data.contrast!==undefined) setContrast(data.contrast);
+                            if(data.saturation!==undefined) setSaturation(data.saturation);
+                            if(data.filter) setFilter(data.filter);
+                            if(data.rotation!==undefined) setRotation(data.rotation);
+                            if(data.flipH!==undefined) setFlipH(data.flipH);
+                            if(data.flipV!==undefined) setFlipV(data.flipV);
+                            if(data.textClips) setTextClips(data.textClips);
+                          } catch(err) {}
+                        };
+                        r.readAsText(f);
+                      };
+                      inp.click(); setActiveMenu(null);
+                    }}>
+                      <Upload size={12} color="#a855f7"/> Open Project (.forge)
+                    </button>
+                    <div className="ce-dropdown-separator"/>
                     {isImage&&<button className="ce-dropdown-item" onClick={()=>{doExport("png");setActiveMenu(null);}}>
                       <FileDown size={12} color="#06b6d4"/> Export PNG Image
                     </button>}
@@ -1270,6 +1329,24 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
                   {mk==="ai"&&<>
                     <button className="ce-dropdown-item" onClick={()=>{setBrightness(15);setContrast(20);setSaturation(25);setFilter("vivid");setActiveMenu(null);}}>
                       <Wand2 size={12} color="#a855f7"/> Auto Color Enhance
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{
+                      const c=canvasRef.current; const ctx=c?.getContext("2d");
+                      if(c&&ctx){
+                        const imgData=ctx.getImageData(0,0,c.width,c.height);
+                        const d=imgData.data;
+                        for(let i=0;i<d.length;i+=4){
+                          const r=d[i],g=d[i+1],b=d[i+2];
+                          if(r>230 && g>230 && b>230){ d[i+3]=0; }
+                        }
+                        ctx.putImageData(imgData,0,0);
+                      }
+                      setActiveMenu(null);
+                    }}>
+                      <Sparkles size={12} color="#22d3ee"/> AI Background Removal (PRO)
+                    </button>
+                    <button className="ce-dropdown-item" onClick={()=>{ setMainTool("erase"); setActiveMenu(null); }}>
+                      <Eraser size={12} color="#f97316"/> Magic Object Eraser Brush
                     </button>
                     <button className="ce-dropdown-item" onClick={()=>{setAiPalette(["#3b82f6","#22d3ee","#a855f7","#eab308","#22c55e","#ef4444"]);setRightPanel("ai");setActiveMenu(null);}}>
                       <Palette size={12} color="#ec4899"/> Extract Color Palette
@@ -1639,12 +1716,41 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
             {rightPanel==="adjust"&&(
               <>
                 <div style={{marginBottom:"10px"}}>
+                  <span style={{fontSize:"9px",fontWeight:700,color:"#22d3ee",display:"block",marginBottom:"4px"}}>Canvas Aspect Ratio</span>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px"}}>
+                    {ASPECT_RATIOS.map((ar)=>(
+                      <button
+                        key={ar.ratio}
+                        onClick={()=>{
+                          setAspectRatio(ar.ratio);
+                          setCanvasDims({w:ar.w,h:ar.h});
+                          const c=canvasRef.current;
+                          if(c){c.width=ar.w;c.height=ar.h;}
+                        }}
+                        style={{
+                          padding:"4px 3px",borderRadius:"5px",fontSize:"9px",fontWeight:700,cursor:"pointer",
+                          background:aspectRatio===ar.ratio?"rgba(34,211,238,0.2)":V("hover"),
+                          border:`1px solid ${aspectRatio===ar.ratio?"#22d3ee":V("border")}`,
+                          color:aspectRatio===ar.ratio?"#22d3ee":V("text-dim"),
+                          textAlign:"center",
+                        }}
+                      >
+                        {ar.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{marginBottom:"10px"}}>
                   <span style={{fontSize:"9px",color:V("text-dim")}}>Brightness: {brightness}</span>
                   <input type="range" min={-100} max={100} value={brightness} onChange={e=>setBrightness(Number(e.target.value))} style={{width:"100%",accentColor:"#fbbf24"}}/>
                 </div>
                 <div style={{marginBottom:"10px"}}>
                   <span style={{fontSize:"9px",color:V("text-dim")}}>Contrast: {contrast}</span>
                   <input type="range" min={-100} max={100} value={contrast} onChange={e=>setContrast(Number(e.target.value))} style={{width:"100%",accentColor:"#60a5fa"}}/>
+                </div>
+                <div style={{marginBottom:"10px"}}>
+                  <span style={{fontSize:"9px",color:V("text-dim")}}>Saturation: {saturation}</span>
+                  <input type="range" min={-100} max={100} value={saturation} onChange={e=>setSaturation(Number(e.target.value))} style={{width:"100%",accentColor:"#a855f7"}}/>
                 </div>
                 <div style={{marginBottom:"10px"}}>
                   <span style={{fontSize:"9px",color:V("text-dim")}}>Filter Preset</span>
