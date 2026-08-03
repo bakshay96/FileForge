@@ -1348,6 +1348,16 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
                     <button className="ce-dropdown-item" onClick={()=>{ setMainTool("erase"); setActiveMenu(null); }}>
                       <Eraser size={12} color="#f97316"/> Magic Object Eraser Brush
                     </button>
+                    <button className="ce-dropdown-item" onClick={()=>{
+                      const autoClips: TextClip[] = [
+                        { id: "auto_1", text: "⚡ FileForge v2.0 Pro Studio", startTime: 0, duration: 3, x: 120, y: 180, font: "Outfit", fontSize: 32, color: "#22d3ee", bold: true, italic: false },
+                        { id: "auto_2", text: "🔒 Auto-Purge & AES-256 Encrypted", startTime: 3, duration: 4, x: 120, y: 180, font: "Outfit", fontSize: 32, color: "#facc15", bold: true, italic: false },
+                      ];
+                      setTextClips(c => [...c, ...autoClips]);
+                      setActiveMenu(null);
+                    }}>
+                      <Type size={12} color="#facc15"/> Auto-Generate Subtitles (PRO)
+                    </button>
                     <button className="ce-dropdown-item" onClick={()=>{setAiPalette(["#3b82f6","#22d3ee","#a855f7","#eab308","#22c55e","#ef4444"]);setRightPanel("ai");setActiveMenu(null);}}>
                       <Palette size={12} color="#ec4899"/> Extract Color Palette
                     </button>
