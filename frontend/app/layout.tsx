@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from "./providers";
+import FeatureWalkthroughGuide from "@/components/FeatureWalkthroughGuide";
 
 export default function RootLayout({
   children,
@@ -33,7 +34,10 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <FeatureWalkthroughGuide />
+        </Providers>
       </body>
     </html>
   );
