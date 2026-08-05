@@ -16,17 +16,33 @@ import {
   FileUp, Save,
 } from "lucide-react";
 import BrandLoader from "./BrandLoader";
-import { ThemeContext } from "@/app/providers";
+import { ThemeContext, useTheme } from "@/app/providers";
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
 ═══════════════════════════════════════════════════════════════ */
-type MainTool = "pen" | "brush" | "shape" | "erase" | "text" | "crop" | "move";
+type MainTool = "select" | "pen" | "brush" | "shape" | "erase" | "text" | "crop" | "move";
 type PenType  = "ballpoint" | "felt" | "marker" | "highlighter";
 type BrushType = "soft" | "hard" | "airbrush" | "watercolor" | "oil";
 type ShapeType = "rect" | "circle" | "line" | "arrow" | "triangle" | "star";
 type FilterPr  = "none"|"grayscale"|"sepia"|"invert"|"warm"|"cool"|"vivid";
 type MenuKey = "file" | "edit" | "view" | "image" | "filter" | null;
+
+export interface CanvasTextObject {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  align: "left" | "center" | "right";
+  opacity: number;
+}
 
 interface Props { file: File; onSave:(f:File)=>void; onCancel:()=>void; }
 
@@ -215,7 +231,7 @@ function drawRuler(canvas: HTMLCanvasElement, isHorizontal: boolean, zoom: numbe
    INNER COMPONENT
 ═══════════════════════════════════════════════════════════════ */
 function CanvasEditorInner({ file, onSave, onCancel }: Props) {
-  const { theme } = useContext(ThemeContext);
+  const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
   const canvasRef    = useRef<HTMLCanvasElement>(null);
@@ -224,6 +240,14 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
   const rulerHRef    = useRef<HTMLCanvasElement>(null);
   const rulerVRef    = useRef<HTMLCanvasElement>(null);
   const toolbarRef   = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Canvas Text Objects State & Drag/Resize Refs
+  const [canvasTexts, setCanvasTexts] = useState<CanvasTextObject[]>([]);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const dragTextRef = useRef<{ textId: string; startX: number; startY: number; initX: number; initY: number } | null>(null);
+  const resizeTextRef = useRef<{ textId: string; handle: string; startX: number; startY: number; initX: number; initY: number; initW: number; initH: number; initFS: number } | null>(null);
 
   const [img, setImg] = useState<HTMLImageElement|null>(null);
   const [imgLoading, setImgLoading] = useState(true);
@@ -346,27 +370,143 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
     return()=>URL.revokeObjectURL(url);
   },[file]);
 
+  // ── Canvas Text Management Helpers ──
+  const addCanvasTextObject = useCallback((initialText?: string, posX?: number, posY?: number) => {
+    const newObj: CanvasTextObject = {
+      id: `txt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      text: initialText || textInput.trim() || "Edit Text Here",
+      x: posX !== undefined ? posX : Math.round(canvasDims.w / 2 - 120),
+      y: posY !== undefined ? posY : Math.round(canvasDims.h / 2 - 30),
+      width: 240,
+      height: 60,
+      fontSize: fontSz || 28,
+      fontFamily: fontFam || "Inter",
+      color: strokeColor || "#3b82f6",
+      bold,
+      italic,
+      align: "center",
+      opacity: 1,
+    };
+    setCanvasTexts(prev => [...prev, newObj]);
+    setSelectedTextId(newObj.id);
+    setEditingTextId(newObj.id);
+  }, [textInput, canvasDims, fontSz, fontFam, strokeColor, bold, italic]);
+
+  const updateTextObject = useCallback((id: string, updates: Partial<CanvasTextObject>) => {
+    setCanvasTexts(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, []);
+
+  const deleteTextObject = useCallback((id: string) => {
+    setCanvasTexts(prev => prev.filter(t => t.id !== id));
+    if (selectedTextId === id) setSelectedTextId(null);
+    if (editingTextId === id) setEditingTextId(null);
+  }, [selectedTextId, editingTextId]);
+
+  const duplicateTextObject = useCallback((id: string) => {
+    const target = canvasTexts.find(t => t.id === id);
+    if (!target) return;
+    const dup: CanvasTextObject = {
+      ...target,
+      id: `txt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      x: target.x + 20,
+      y: target.y + 20,
+    };
+    setCanvasTexts(prev => [...prev, dup]);
+    setSelectedTextId(dup.id);
+  }, [canvasTexts]);
+
+  // Window listeners for dragging and resizing text objects
+  useEffect(() => {
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (dragTextRef.current) {
+        const { textId, startX, startY, initX, initY } = dragTextRef.current;
+        const dx = (e.clientX - startX) / zoom;
+        const dy = (e.clientY - startY) / zoom;
+        setCanvasTexts(prev => prev.map(t => t.id === textId ? { ...t, x: Math.round(initX + dx), y: Math.round(initY + dy) } : t));
+      }
+      if (resizeTextRef.current) {
+        const { textId, handle, startX, startY, initX, initY, initW, initH, initFS } = resizeTextRef.current;
+        const dx = (e.clientX - startX) / zoom;
+        const dy = (e.clientY - startY) / zoom;
+        setCanvasTexts(prev => prev.map(t => {
+          if (t.id !== textId) return t;
+          let newX = initX, newY = initY, newW = initW, newH = initH, newFS = initFS;
+          if (handle.includes("e")) newW = Math.max(40, initW + dx);
+          if (handle.includes("s")) newH = Math.max(24, initH + dy);
+          if (handle.includes("w")) {
+            const w = Math.max(40, initW - dx);
+            newX = initX + (initW - w);
+            newW = w;
+          }
+          if (handle.includes("n")) {
+            const h = Math.max(24, initH - dy);
+            newY = initY + (initH - h);
+            newH = h;
+          }
+          if (handle.length === 2) {
+            const scale = Math.max(0.3, newW / initW);
+            newFS = Math.max(10, Math.round(initFS * scale));
+          }
+          return { ...t, x: Math.round(newX), y: Math.round(newY), width: Math.round(newW), height: Math.round(newH), fontSize: newFS };
+        }));
+      }
+    };
+    const handleWindowMouseUp = () => {
+      dragTextRef.current = null;
+      resizeTextRef.current = null;
+    };
+    window.addEventListener("mousemove", handleWindowMouseMove);
+    window.addEventListener("mouseup", handleWindowMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+      window.removeEventListener("mouseup", handleWindowMouseUp);
+    };
+  }, [zoom]);
+
+  const drawCanvasTextsOnCtx = useCallback((ctx: CanvasRenderingContext2D) => {
+    canvasTexts.forEach(txt => {
+      ctx.save();
+      ctx.font = `${txt.italic ? "italic " : ""}${txt.bold ? "bold " : ""}${txt.fontSize}px ${txt.fontFamily}, sans-serif`;
+      ctx.fillStyle = txt.color;
+      ctx.globalAlpha = txt.opacity;
+      ctx.textAlign = txt.align;
+      ctx.shadowColor = "rgba(0,0,0,0.75)";
+      ctx.shadowBlur = 6;
+
+      const lines = txt.text.split("\n");
+      const lineHeight = txt.fontSize * 1.25;
+      lines.forEach((line, idx) => {
+        let drawX = txt.x;
+        if (txt.align === "center") drawX = txt.x + txt.width / 2;
+        if (txt.align === "right") drawX = txt.x + txt.width;
+        ctx.fillText(line, drawX, txt.y + txt.fontSize + idx * lineHeight);
+      });
+      ctx.restore();
+    });
+  }, [canvasTexts]);
+
   /* Redraw base canvas */
-  const redraw = useCallback(()=>{
-    const c=canvasRef.current; if(!c||!img) return;
-    const ctx=c.getContext("2d"); if(!ctx) return;
-    c.width=img.naturalWidth||800; c.height=img.naturalHeight||600;
-    const ov=overlayRef.current; if(ov){ov.width=c.width;ov.height=c.height;}
-    ctx.save(); ctx.clearRect(0,0,c.width,c.height);
-    let f=`brightness(${100+brightness}%) contrast(${100+contrast}%) saturate(${100+saturation}%)`;
-    if(filter==="grayscale") f+=" grayscale(100%)";
-    if(filter==="sepia")     f+=" sepia(80%)";
-    if(filter==="invert")    f+=" invert(100%)";
-    if(filter==="warm")      f+=" sepia(30%) hue-rotate(-10deg)";
-    if(filter==="cool")      f+=" hue-rotate(180deg) saturate(150%)";
-    if(filter==="vivid")     f+=" saturate(200%) contrast(110%)";
-    ctx.filter=f;
-    ctx.translate(c.width/2,c.height/2);
-    ctx.rotate((rotation*Math.PI)/180);
-    ctx.scale(flipH?-1:1,flipV?-1:1);
-    ctx.drawImage(img,-c.width/2,-c.height/2,c.width,c.height);
+  const redraw = useCallback(() => {
+    const c = canvasRef.current; if (!c || !img) return;
+    const ctx = c.getContext("2d"); if (!ctx) return;
+    c.width = img.naturalWidth || 800; c.height = img.naturalHeight || 600;
+    const ov = overlayRef.current; if (ov) { ov.width = c.width; ov.height = c.height; }
+    ctx.save(); ctx.clearRect(0, 0, c.width, c.height);
+    let f = `brightness(${100 + brightness}%) contrast(${100 + contrast}%) saturate(${100 + saturation}%)`;
+    if (filter === "grayscale") f += " grayscale(100%)";
+    if (filter === "sepia")     f += " sepia(80%)";
+    if (filter === "invert")    f += " invert(100%)";
+    if (filter === "warm")      f += " sepia(30%) hue-rotate(-10deg)";
+    if (filter === "cool")      f += " hue-rotate(180deg) saturate(150%)";
+    if (filter === "vivid")     f += " saturate(200%) contrast(110%)";
+    ctx.filter = f;
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+    ctx.drawImage(img, -c.width / 2, -c.height / 2, c.width, c.height);
     ctx.restore();
-  },[img,brightness,contrast,saturation,rotation,flipH,flipV,filter]);
+    drawCanvasTextsOnCtx(ctx);
+  }, [img, brightness, contrast, saturation, rotation, flipH, flipV, filter, drawCanvasTextsOnCtx]);
 
   useEffect(()=>{redraw();},[redraw]);
 
@@ -454,14 +594,8 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
     if(handle||mainTool==="crop") return;
     saveState(); const p=getCoords(e);
     isDrawing.current=true; startPos.current=p; lastPos.current=p;
-    if(mainTool==="text"&&textInput.trim()){
-      const c=canvasRef.current; const ctx=c?.getContext("2d");
-      if(ctx&&c){
-        ctx.save();
-        ctx.font=`${italic?"italic ":""}${bold?"bold ":""}${fontSz*2}px ${fontFam},sans-serif`;
-        ctx.fillStyle=strokeColor; ctx.shadowColor="rgba(0,0,0,0.7)"; ctx.shadowBlur=5;
-        ctx.globalAlpha=1; ctx.fillText(textInput,p.x,p.y); ctx.restore();
-      }
+    if (mainTool === "text") {
+      addCanvasTextObject(textInput.trim() || "Double click to edit text", p.x, p.y);
     }
   };
 
@@ -545,21 +679,25 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
   },[activeMenu]);
 
   /* Save / Export */
-  const save=useCallback(()=>{
-    const c=canvasRef.current; if(!c) return;
+  const save = useCallback(() => {
+    const c = canvasRef.current; if (!c) return;
     setSaving(true);
-    const cx=(crop.left/100)*c.width, cy=(crop.top/100)*c.height;
-    const cw=c.width*(1-(crop.left+crop.right)/100);
-    const ch=c.height*(1-(crop.top+crop.bottom)/100);
-    const out=document.createElement("canvas");
-    out.width=Math.max(10,cw); out.height=Math.max(10,ch);
-    out.getContext("2d")?.drawImage(c,cx,cy,cw,ch,0,0,out.width,out.height);
-    out.toBlob(blob=>{
-      if(!blob){setSaving(false);return;}
-      onSave(new File([blob],`edited_${file.name.replace(/\.[^/.]+$/,"")}.png`,{type:"image/png"}));
-      setSaving(false); setSaved(true); setTimeout(()=>setSaved(false),2500);
-    },"image/png",0.95);
-  },[crop,file,onSave]);
+    const cx = (crop.left / 100) * c.width, cy = (crop.top / 100) * c.height;
+    const cw = c.width * (1 - (crop.left + crop.right) / 100);
+    const ch = c.height * (1 - (crop.top + crop.bottom) / 100);
+    const out = document.createElement("canvas");
+    out.width = Math.max(10, cw); out.height = Math.max(10, ch);
+    const outCtx = out.getContext("2d");
+    if (outCtx) {
+      outCtx.drawImage(c, cx, cy, cw, ch, 0, 0, out.width, out.height);
+      drawCanvasTextsOnCtx(outCtx);
+    }
+    out.toBlob(blob => {
+      if (!blob) { setSaving(false); return; }
+      onSave(new File([blob], `edited_${file.name.replace(/\.[^/.]+$/, "")}.png`, { type: "image/png" }));
+      setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
+    }, "image/png", 0.95);
+  }, [crop, file, onSave, drawCanvasTextsOnCtx]);
 
   const doExport=(format:"png"|"jpeg"|"webp")=>{
     const c=canvasRef.current; if(!c) return;
@@ -874,6 +1012,15 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
               style={{width:"100%",borderRadius:"7px",padding:"7px",fontSize:"11px",color:V("text"),
                       background:V("input-bg"),border:`1px solid ${V("border")}`,outline:"none",
                       resize:"none",fontFamily:"inherit",marginBottom:"6px"}}/>
+            <button
+              onClick={() => addCanvasTextObject(textInput.trim() || "Double click to edit text")}
+              style={{
+                width: "100%", padding: "6px", borderRadius: "6px", border: "none", cursor: "pointer",
+                background: "linear-gradient(135deg,#22d3ee,#6366f1)", color: "#fff", fontSize: "11px", fontWeight: 700
+              }}
+            >
+              + Add Canvas Text
+            </button>
           </>
         ))}
         {sec("Font Size",(
@@ -975,17 +1122,44 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
         fontSize:"12px",
       }}>
         {/* Brand micro logo */}
-        <div style={{display:"flex",alignItems:"center",gap:"5px",paddingRight:"10px",
-                     borderRight:`1px solid ${V("border")}`,marginRight:"4px"}}>
-          <div style={{width:"16px",height:"16px",borderRadius:"4px",flexShrink:0,
-                       background:"linear-gradient(135deg,#22d3ee,#6366f1)",
-                       display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <Zap size={9} color="#fff" fill="#fff"/>
+        <a
+          href="/"
+          onClick={(e) => {
+            if (onCancel) {
+              e.preventDefault();
+              onCancel();
+            }
+          }}
+          title="Return to Home Dashboard"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            paddingRight: "10px",
+            borderRight: `1px solid ${V("border")}`,
+            marginRight: "4px",
+            textDecoration: "none",
+            cursor: "pointer",
+          }}
+        >
+          <div
+            style={{
+              width: "16px",
+              height: "16px",
+              borderRadius: "4px",
+              flexShrink: 0,
+              background: "linear-gradient(135deg,#22d3ee,#6366f1)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Zap size={9} color="#fff" fill="#fff" />
           </div>
-          <span style={{fontFamily:"'Outfit',sans-serif",fontWeight:800,fontSize:"12px",color:V("text")}}>
-            File<span style={{color:"#22d3ee"}}>Forge</span>
+          <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: "12px", color: V("text") }}>
+            File<span style={{ color: "#22d3ee" }}>Forge</span>
           </span>
-        </div>
+        </a>
 
         {/* File menu */}
         {(["file","edit","view","image","filter"] as MenuKey[]).map(menuKey=>{
@@ -1109,6 +1283,14 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
 
         {/* Right side of menu bar */}
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:"6px",paddingRight:"8px"}}>
+          <button
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            style={{ height: "20px", width: "24px", padding: "0", borderRadius: "5px" }}
+          >
+            {isDark ? <Sun size={11} /> : <Moon size={11} />}
+          </button>
           <span style={{fontSize:"10px",color:V("text-faint"),fontFamily:"monospace"}}>
             {canvasDims.w}×{canvasDims.h}
           </span>
@@ -1272,6 +1454,7 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
           {/* Tool buttons */}
           <div ref={toolbarRef} style={{flexShrink:0,padding:"8px 8px 0",display:"flex",flexDirection:"column",gap:"2px",position:"relative"}}>
             {([
+              {id:"select", icon:<Move        size={14}/>, label:"Select / Move", color:"#22d3ee"},
               {id:"pen",    icon:<Pencil     size={14}/>, label:"Pen",    color:"#3b82f6"},
               {id:"brush",  icon:<Paintbrush  size={14}/>, label:"Brush",  color:"#06b6d4"},
               {id:"shape",  icon:<Square      size={14}/>, label:"Shapes", color:"#a855f7"},
@@ -1394,6 +1577,167 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
                 <canvas ref={overlayRef}
                   style={{position:"absolute",top:0,left:0,pointerEvents:"none",borderRadius:"4px",
                           maxWidth:"100%",maxHeight:"calc(100vh - 200px)"}}/>
+
+                {/* Interactive Canvas Text Objects Overlay */}
+                {canvasTexts.map(txt => {
+                  const isSel = selectedTextId === txt.id;
+                  const isEdit = editingTextId === txt.id;
+                  return (
+                    <div
+                      key={txt.id}
+                      onMouseDown={(e) => {
+                        if (mainTool === "select" || mainTool === "text" || mainTool === "move") {
+                          e.stopPropagation();
+                          setSelectedTextId(txt.id);
+                          dragTextRef.current = { textId: txt.id, startX: e.clientX, startY: e.clientY, initX: txt.x, initY: txt.y };
+                        }
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTextId(txt.id);
+                        setEditingTextId(txt.id);
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: `${txt.x}px`,
+                        top: `${txt.y}px`,
+                        width: `${txt.width}px`,
+                        minHeight: `${txt.height}px`,
+                        fontSize: `${txt.fontSize}px`,
+                        fontFamily: `${txt.fontFamily}, sans-serif`,
+                        color: txt.color,
+                        fontWeight: txt.bold ? "bold" : "normal",
+                        fontStyle: txt.italic ? "italic" : "normal",
+                        textAlign: txt.align,
+                        opacity: txt.opacity,
+                        border: isSel ? "2px dashed #22d3ee" : "1px solid transparent",
+                        boxShadow: isSel ? "0 0 20px rgba(34,211,238,0.4)" : "none",
+                        borderRadius: "4px",
+                        padding: "4px",
+                        cursor: isSel ? "move" : "pointer",
+                        userSelect: "none",
+                        zIndex: isSel ? 100 : 10,
+                        background: isSel ? "rgba(34,211,238,0.05)" : "transparent",
+                      }}
+                    >
+                      {isEdit ? (
+                        <textarea
+                          autoFocus
+                          value={txt.text}
+                          onChange={(e) => updateTextObject(txt.id, { text: e.target.value })}
+                          onBlur={() => setEditingTextId(null)}
+                          onKeyDown={(e) => { if (e.key === "Escape") setEditingTextId(null); }}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            minHeight: "45px",
+                            background: isDark ? "rgba(12,15,24,0.92)" : "rgba(255,255,255,0.95)",
+                            color: txt.color,
+                            fontSize: `${txt.fontSize}px`,
+                            fontFamily: `${txt.fontFamily}, sans-serif`,
+                            fontWeight: txt.bold ? "bold" : "normal",
+                            fontStyle: txt.italic ? "italic" : "normal",
+                            textAlign: txt.align,
+                            border: "2px solid #22d3ee",
+                            borderRadius: "6px",
+                            outline: "none",
+                            resize: "both",
+                            padding: "4px",
+                          }}
+                        />
+                      ) : (
+                        <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.25 }}>{txt.text}</div>
+                      )}
+
+                      {/* Quick Floating Controls for Selected Text */}
+                      {isSel && !isEdit && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            position: "absolute",
+                            bottom: "calc(100% + 6px)",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            background: isDark ? "#0d1021" : "#ffffff",
+                            border: "1px solid rgba(34,211,238,0.4)",
+                            borderRadius: "8px",
+                            padding: "3px 6px",
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                            zIndex: 102,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <button onClick={() => setEditingTextId(txt.id)} title="Edit Text" style={{ padding: "2px 6px", borderRadius: "4px", background: "rgba(34,211,238,0.15)", border: "none", color: "#22d3ee", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
+                            <Pencil size={10} style={{ display: "inline", marginRight: "3px" }} /> Edit
+                          </button>
+                          <button onClick={() => updateTextObject(txt.id, { bold: !txt.bold })} style={{ padding: "2px 5px", borderRadius: "4px", background: txt.bold ? "#22d3ee" : "transparent", border: "none", color: txt.bold ? "#000" : V("text-dim"), fontSize: "10px", fontWeight: 900, cursor: "pointer" }}>
+                            B
+                          </button>
+                          <button onClick={() => updateTextObject(txt.id, { italic: !txt.italic })} style={{ padding: "2px 5px", borderRadius: "4px", background: txt.italic ? "#22d3ee" : "transparent", border: "none", color: txt.italic ? "#000" : V("text-dim"), fontSize: "10px", fontStyle: "italic", cursor: "pointer" }}>
+                            I
+                          </button>
+                          <input type="color" value={txt.color} onChange={(e) => updateTextObject(txt.id, { color: e.target.value })} style={{ width: "18px", height: "18px", borderRadius: "4px", border: "none", cursor: "pointer" }} />
+                          <button onClick={() => duplicateTextObject(txt.id)} title="Duplicate Text" style={{ padding: "2px 5px", borderRadius: "4px", background: "transparent", border: "none", color: V("text-dim"), fontSize: "10px", cursor: "pointer" }}>
+                            <Copy size={10} />
+                          </button>
+                          <button onClick={() => deleteTextObject(txt.id)} title="Delete Text" style={{ padding: "2px 5px", borderRadius: "4px", background: "rgba(239,68,68,0.15)", border: "none", color: "#ef4444", fontSize: "10px", cursor: "pointer" }}>
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 8 Corner / Side Resize Handles */}
+                      {isSel && !isEdit && (
+                        <>
+                          {[
+                            { h: "nw", style: { top: "-6px", left: "-6px" } },
+                            { h: "ne", style: { top: "-6px", right: "-6px" } },
+                            { h: "sw", style: { bottom: "-6px", left: "-6px" } },
+                            { h: "se", style: { bottom: "-6px", right: "-6px" } },
+                            { h: "n",  style: { top: "-6px", left: "calc(50% - 5px)" } },
+                            { h: "s",  style: { bottom: "-6px", left: "calc(50% - 5px)" } },
+                            { h: "w",  style: { top: "calc(50% - 5px)", left: "-6px" } },
+                            { h: "e",  style: { top: "calc(50% - 5px)", right: "-6px" } },
+                          ].map(({ h, style }) => (
+                            <div
+                              key={h}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                setSelectedTextId(txt.id);
+                                resizeTextRef.current = {
+                                  textId: txt.id,
+                                  handle: h,
+                                  startX: e.clientX,
+                                  startY: e.clientY,
+                                  initX: txt.x,
+                                  initY: txt.y,
+                                  initW: txt.width,
+                                  initH: txt.height,
+                                  initFS: txt.fontSize,
+                                };
+                              }}
+                              style={{
+                                position: "absolute",
+                                width: "10px",
+                                height: "10px",
+                                background: "#22d3ee",
+                                border: "1.5px solid #ffffff",
+                                borderRadius: "50%",
+                                zIndex: 101,
+                                cursor: `${h}-resize`,
+                                boxShadow: "0 0 6px rgba(0,0,0,0.4)",
+                                ...style,
+                              }}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* Eraser cursor visual */}
                 {mainTool==="erase"&&eraserPos&&(()=>{
