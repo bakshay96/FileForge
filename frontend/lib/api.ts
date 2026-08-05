@@ -218,6 +218,24 @@ export async function convertPdfToImages(
   return data;
 }
 
+/**
+ * Extract plain text from PDF (OCR).
+ */
+export async function ocrPdf(
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<JobResponse> {
+  const form = new FormData();
+  form.append("file", file);
+
+  const { data } = await api.post<JobResponse>("/api/pdf/ocr", form, {
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+    },
+  });
+  return data;
+}
+
 // ── Download & File Management ─────────────────────────────────────────────
 
 /**

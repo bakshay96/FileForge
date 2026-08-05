@@ -1,6 +1,6 @@
 {
   "name": "fileforge-frontend",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "FileForge — Secure Image & PDF Processing Platform",
   "private": true,
   "scripts": {

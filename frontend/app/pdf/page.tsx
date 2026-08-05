@@ -7,10 +7,10 @@ import DropZone from "@/components/DropZone";
 import FilePreview from "@/components/FilePreview";
 import FormatSelect from "@/components/FormatSelect";
 import ResultPanel from "@/components/ResultPanel";
-import { compressPdf, convertPdfToImages, JobResponse } from "@/lib/api";
+import { compressPdf, convertPdfToImages, ocrPdf, JobResponse } from "@/lib/api";
 import { FileText, Archive, Minimize2, History } from "lucide-react";
 
-type Mode = "compress" | "convert";
+type Mode = "compress" | "convert" | "ocr" | "pageOrganizer";
 
 const ACCEPT_PDF = { "application/pdf": [".pdf"] };
 
@@ -29,6 +29,12 @@ export default function PdfPage() {
   const [imgFormat,    setImgFormat]    = useState("jpg");
   const [dpi,          setDpi]          = useState(150);
   const [pages,        setPages]        = useState("");
+  const [ocrText,      setOcrText]      = useState("");
+  const [pageList,     setPageList]     = useState<{ id: number; name: string; rot: number }[]>([
+    { id: 1, name: "Page 1", rot: 0 },
+    { id: 2, name: "Page 2", rot: 0 },
+    { id: 3, name: "Page 3", rot: 0 },
+  ]);
   const [progress,     setProgress]     = useState(0);
   const [processing,   setProcessing]   = useState(false);
   const [result,       setResult]       = useState<JobResponse | null>(null);
@@ -52,6 +58,8 @@ export default function PdfPage() {
           },
           setProgress
         );
+      } else if (mode === "ocr") {
+        job = await ocrPdf(file, setProgress);
       } else {
         job = await convertPdfToImages(
           file,
