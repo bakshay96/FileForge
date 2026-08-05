@@ -12,7 +12,7 @@ import {
   Layers, Minus, Move, ArrowRight, Sliders, ChevronRight, ChevronDown,
   RotateCw, RotateCcw, Grid, Ruler, Image as ImageIcon, FileText,
   Scissors, Copy, Trash2, RefreshCw, Moon, Info, Eye, EyeOff,
-  AlignLeft, Paintbrush2, Pipette, SlidersHorizontal, FileDown,
+  AlignLeft, Palette, Pipette, SlidersHorizontal, FileDown,
   FileUp, Save, Share2,
 } from "lucide-react";
 import BrandLoader from "./BrandLoader";
@@ -22,12 +22,30 @@ import { ThemeContext, useTheme } from "@/app/providers";
 /* ═══════════════════════════════════════════════════════════════
    TYPES
 ═══════════════════════════════════════════════════════════════ */
-type MainTool = "select" | "pen" | "brush" | "shape" | "erase" | "text" | "crop" | "move";
+type MainTool = "select" | "pen" | "brush" | "shape" | "erase" | "text" | "crop" | "bg" | "move";
 type PenType  = "ballpoint" | "felt" | "marker" | "highlighter";
 type BrushType = "soft" | "hard" | "airbrush" | "watercolor" | "oil";
 type ShapeType = "rect" | "circle" | "line" | "arrow" | "triangle" | "star";
 type FilterPr  = "none"|"grayscale"|"sepia"|"invert"|"warm"|"cool"|"vivid";
 type MenuKey = "file" | "edit" | "view" | "image" | "filter" | null;
+
+const BG_PRESETS = [
+  { id: "transparent", label: "Transparent", preview: "transparent" },
+  { id: "#ffffff", label: "White", preview: "#ffffff" },
+  { id: "#000000", label: "Black", preview: "#000000" },
+  { id: "#0d1021", label: "Dark Studio", preview: "#0d1021" },
+  { id: "#f1f5f9", label: "Soft Gray", preview: "#f1f5f9" },
+  { id: "#3b82f6", label: "Royal Blue", preview: "#3b82f6" },
+  { id: "#22d3ee", label: "Cyan", preview: "#22d3ee" },
+  { id: "#a855f7", label: "Purple", preview: "#a855f7" },
+  { id: "#ec4899", label: "Pink", preview: "#ec4899" },
+  { id: "#22c55e", label: "Green", preview: "#22c55e" },
+  { id: "#f97316", label: "Orange", preview: "#f97316" },
+  { id: "linear-gradient(135deg,#22d3ee,#6366f1)", label: "Aurora", preview: "linear-gradient(135deg,#22d3ee,#6366f1)" },
+  { id: "linear-gradient(135deg,#f97316,#ec4899)", label: "Sunset", preview: "linear-gradient(135deg,#f97316,#ec4899)" },
+  { id: "linear-gradient(135deg,#0f172a,#1e293b)", label: "Midnight", preview: "linear-gradient(135deg,#0f172a,#1e293b)" },
+  { id: "linear-gradient(135deg,#a855f7,#3b82f6)", label: "Neon", preview: "linear-gradient(135deg,#a855f7,#3b82f6)" },
+];
 
 export interface CanvasTextObject {
   id: string;
@@ -256,6 +274,24 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
   const [exporting, setExporting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [autoCropping, setAutoCropping] = useState(false);
+  const [canvasBg, setCanvasBg] = useState<string>("transparent");
+
+  const drawCanvasBgOnCtx = useCallback((ctx: CanvasRenderingContext2D, w: number, h: number) => {
+    if (!canvasBg || canvasBg === "transparent") return;
+    ctx.save();
+    if (canvasBg.startsWith("linear-gradient")) {
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      if (canvasBg.includes("#22d3ee")) { grad.addColorStop(0, "#22d3ee"); grad.addColorStop(1, "#6366f1"); }
+      else if (canvasBg.includes("#f97316")) { grad.addColorStop(0, "#f97316"); grad.addColorStop(1, "#ec4899"); }
+      else if (canvasBg.includes("#0f172a")) { grad.addColorStop(0, "#0f172a"); grad.addColorStop(1, "#1e293b"); }
+      else { grad.addColorStop(0, "#a855f7"); grad.addColorStop(1, "#3b82f6"); }
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = canvasBg;
+    }
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }, [canvasBg]);
 
   // Auto Crop Detection Algorithm with Magical Loader
   const handleAutoCrop = useCallback(() => {
@@ -555,6 +591,7 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
     c.width = img.naturalWidth || 800; c.height = img.naturalHeight || 600;
     const ov = overlayRef.current; if (ov) { ov.width = c.width; ov.height = c.height; }
     ctx.save(); ctx.clearRect(0, 0, c.width, c.height);
+    drawCanvasBgOnCtx(ctx, c.width, c.height);
     let f = `brightness(${100 + brightness}%) contrast(${100 + contrast}%) saturate(${100 + saturation}%)`;
     if (filter === "grayscale") f += " grayscale(100%)";
     if (filter === "sepia")     f += " sepia(80%)";
@@ -569,7 +606,7 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
     ctx.drawImage(img, -c.width / 2, -c.height / 2, c.width, c.height);
     ctx.restore();
     drawCanvasTextsOnCtx(ctx);
-  }, [img, brightness, contrast, saturation, rotation, flipH, flipV, filter, drawCanvasTextsOnCtx]);
+  }, [img, brightness, contrast, saturation, rotation, flipH, flipV, filter, drawCanvasBgOnCtx, drawCanvasTextsOnCtx]);
 
   useEffect(()=>{redraw();},[redraw]);
 
@@ -752,6 +789,7 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
     out.width = Math.max(10, cw); out.height = Math.max(10, ch);
     const outCtx = out.getContext("2d");
     if (outCtx) {
+      drawCanvasBgOnCtx(outCtx, out.width, out.height);
       outCtx.drawImage(c, cx, cy, cw, ch, 0, 0, out.width, out.height);
       drawCanvasTextsOnCtx(outCtx);
     }
@@ -760,7 +798,7 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
       onSave(new File([blob], `edited_${file.name.replace(/\.[^/.]+$/, "")}.png`, { type: "image/png" }));
       setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
     }, "image/png", 0.95);
-  }, [crop, file, onSave, drawCanvasTextsOnCtx]);
+  }, [crop, file, onSave, drawCanvasBgOnCtx, drawCanvasTextsOnCtx]);
 
   const doExport=(format:"png"|"jpeg"|"webp")=>{
     const c=canvasRef.current; if(!c) return;
@@ -1130,6 +1168,68 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
                         color:V("text-muted"),fontSize:"11px",fontWeight:600}}>
                 Reset Crop
               </button>
+            </div>
+          </>
+        ))}
+      </>
+    );
+
+    if (mainTool === "bg") return (
+      <>
+        {sec("Canvas Background Color", (
+          <>
+            <p style={{ fontSize: "10px", color: V("text-dim"), lineHeight: 1.5, marginBottom: "8px" }}>
+              Choose a solid color, gradient, or custom hex for canvas background.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px", marginBottom: "10px" }}>
+              {BG_PRESETS.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => setCanvasBg(b.id)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "3px",
+                    padding: "6px 4px",
+                    borderRadius: "8px",
+                    border: canvasBg === b.id ? "2px solid #ec4899" : `1px solid ${V("border")}`,
+                    background: canvasBg === b.id ? "rgba(236,72,153,0.12)" : V("hover"),
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "24px",
+                      height: "24px",
+                      borderRadius: "6px",
+                      background: b.preview === "transparent" ? "repeating-conic-gradient(#808080 0% 25%, #fff 0% 50%) 50% / 12px 12px" : b.preview,
+                      border: "1px solid rgba(128,128,128,0.3)",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+                    }}
+                  />
+                  <span style={{ fontSize: "9px", fontWeight: 600, color: canvasBg === b.id ? "#ec4899" : V("text-muted") }}>
+                    {b.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Color Input */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: V("hover"), padding: "6px 8px", borderRadius: "8px", border: `1px solid ${V("border")}` }}>
+              <input
+                type="color"
+                value={canvasBg.startsWith("#") ? canvasBg : "#3b82f6"}
+                onChange={(e) => setCanvasBg(e.target.value)}
+                style={{ width: "28px", height: "24px", borderRadius: "5px", cursor: "pointer", padding: "1px", border: `1px solid ${V("border-2")}`, background: "transparent" }}
+              />
+              <div>
+                <div style={{ fontSize: "9px", color: V("text-faint") }}>Custom Hex</div>
+                <div style={{ fontSize: "10px", fontFamily: "monospace", color: "#ec4899", fontWeight: 700 }}>
+                  {canvasBg.startsWith("linear-gradient") ? "Gradient Active" : canvasBg}
+                </div>
+              </div>
             </div>
           </>
         ))}
@@ -1548,6 +1648,7 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
               {id:"erase",  icon:<Eraser      size={14}/>, label:"Eraser", color:"#ef4444"},
               {id:"text",   icon:<Type        size={14}/>, label:"Text",   color:"#eab308"},
               {id:"crop",   icon:<Crop        size={14}/>, label:"Crop",   color:"#f97316"},
+              {id:"bg",     icon:<Palette     size={14}/>, label:"Background", color:"#ec4899"},
             ] as {id:MainTool;icon:React.ReactNode;label:string;color:string}[]).map(({id,icon,label,color})=>(
               <button key={id}
                 onClick={()=>{
