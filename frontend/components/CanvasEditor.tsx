@@ -13,9 +13,10 @@ import {
   RotateCw, RotateCcw, Grid, Ruler, Image as ImageIcon, FileText,
   Scissors, Copy, Trash2, RefreshCw, Moon, Info, Eye, EyeOff,
   AlignLeft, Paintbrush2, Pipette, SlidersHorizontal, FileDown,
-  FileUp, Save,
+  FileUp, Save, Share2,
 } from "lucide-react";
 import BrandLoader from "./BrandLoader";
+import ShareModal from "./ShareModal";
 import { ThemeContext, useTheme } from "@/app/providers";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -253,6 +254,68 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
   const [imgLoading, setImgLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [autoCropping, setAutoCropping] = useState(false);
+
+  // Auto Crop Detection Algorithm with Magical Loader
+  const handleAutoCrop = useCallback(() => {
+    setAutoCropping(true);
+    setTimeout(() => {
+      const c = canvasRef.current;
+      if (!c) { setAutoCropping(false); return; }
+      const ctx = c.getContext("2d");
+      if (!ctx || c.width === 0 || c.height === 0) { setAutoCropping(false); return; }
+
+      const width = c.width;
+      const height = c.height;
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const data = imgData.data;
+
+      const bgR = data[0], bgG = data[1], bgB = data[2], bgA = data[3];
+
+      const isBgPixel = (x: number, y: number) => {
+        const idx = (y * width + x) * 4;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
+        if (a < 20) return true;
+        const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB) + Math.abs(a - bgA);
+        return diff < 40;
+      };
+
+      let minX = width, minY = height, maxX = 0, maxY = 0;
+      let found = false;
+
+      const step = Math.max(1, Math.floor(Math.min(width, height) / 600));
+      for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+          if (!isBgPixel(x, y)) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+            found = true;
+          }
+        }
+      }
+
+      if (found && maxX > minX && maxY > minY) {
+        const padX = Math.round(width * 0.02);
+        const padY = Math.round(height * 0.02);
+
+        const cLeft = Math.max(0, minX - padX);
+        const cTop = Math.max(0, minY - padY);
+        const cRight = Math.max(0, width - (maxX + padX));
+        const cBottom = Math.max(0, height - (maxY + padY));
+
+        setCrop({
+          left: Math.round((cLeft / width) * 100),
+          top: Math.round((cTop / height) * 100),
+          right: Math.round((cRight / width) * 100),
+          bottom: Math.round((cBottom / height) * 100),
+        });
+      }
+      setAutoCropping(false);
+    }, 600);
+  }, []);
 
   /* ── Active tool ── */
   const [mainTool, setMainTool] = useState<MainTool>("pen");
@@ -1054,12 +1117,20 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
                 </div>
               ))}
             </div>
-            <button onClick={()=>setCrop({top:0,left:0,right:0,bottom:0})}
-              style={{width:"100%",padding:"7px",borderRadius:"7px",cursor:"pointer",
-                      background:V("hover"),border:`1px solid ${V("border")}`,
-                      color:V("text-muted"),fontSize:"11px",fontWeight:600}}>
-              Reset Crop
-            </button>
+            <div style={{display:"flex",gap:"6px",marginTop:"6px"}}>
+              <button onClick={handleAutoCrop}
+                style={{flex:1,padding:"7px",borderRadius:"7px",cursor:"pointer",
+                        background:"linear-gradient(135deg,#22d3ee,#6366f1)",border:"none",
+                        color:"#fff",fontSize:"11px",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:"4px"}}>
+                <Sparkles size={12}/> Auto Crop
+              </button>
+              <button onClick={()=>setCrop({top:0,left:0,right:0,bottom:0})}
+                style={{flex:1,padding:"7px",borderRadius:"7px",cursor:"pointer",
+                        background:V("hover"),border:`1px solid ${V("border")}`,
+                        color:V("text-muted"),fontSize:"11px",fontWeight:600}}>
+                Reset Crop
+              </button>
+            </div>
           </>
         ))}
       </>
@@ -1113,6 +1184,15 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
       {imgLoading && <BrandLoader message="Loading image…" subMessage={file.name} theme={theme}/>}
       {saving     && <BrandLoader message="Saving changes…" theme={theme}/>}
       {exporting  && <BrandLoader message="Exporting…" subMessage="Preparing download" theme={theme}/>}
+      {autoCropping && <BrandLoader message="✨ Magical Auto-Crop in progress…" subMessage="Detecting subject & content boundaries" theme={theme}/>}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        getCanvas={() => canvasRef.current}
+        fileName={file.name}
+      />
 
       {/* ══ MENU BAR ════════════════════════════════════════════ */}
       <div style={{
@@ -1386,6 +1466,13 @@ function CanvasEditorInner({ file, onSave, onCancel }: Props) {
 
         {/* Right — save/export/controls */}
         <div style={{display:"flex",alignItems:"center",gap:"4px",flexShrink:0}}>
+          <button onClick={() => setShareOpen(true)}
+            style={{display:"flex",alignItems:"center",gap:"4px",padding:"5px 10px",borderRadius:"6px",
+                    background:"linear-gradient(135deg,rgba(34,211,238,0.15),rgba(99,102,241,0.15))",
+                    border:"1px solid rgba(34,211,238,0.4)",
+                    color:"#22d3ee",cursor:"pointer",fontSize:"11px",fontWeight:700}}>
+            <Share2 size={12}/> Share
+          </button>
           <button onClick={()=>doExport("png")}
             style={{display:"flex",alignItems:"center",gap:"3px",padding:"5px 8px",borderRadius:"6px",
                     background:V("hover"),border:`1px solid ${V("border")}`,

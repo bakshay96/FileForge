@@ -16,9 +16,10 @@ import {
   Wand2, Palette, Upload, Smile, HelpCircle,
   Moon, Sun as SunIcon, Waves, Focus, Blend, FileDown,
   ChevronLeft, ChevronRight, PlusCircle, Camera, Copy, Scissors,
-  FastForward, Frame, Layers3, Move, AlignCenter, Repeat,
+  FastForward, Frame, Layers3, Move, AlignCenter, Repeat, Share2,
 } from "lucide-react";
 import BrandLoader from "./BrandLoader";
+import ShareModal from "./ShareModal";
 import { ThemeContext, useTheme } from "@/app/providers";
 
 /* ════════════════════════════════════════════════════════
@@ -547,6 +548,70 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
   const [cropHandle,setCropHandle]=useState<string|null>(null);
   const [history,setHistory]=useState<ImageData[]>([]);
   const [future,setFuture]=useState<ImageData[]>([]);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [autoCropping, setAutoCropping] = useState(false);
+
+  // Auto Crop Detection Algorithm with Magical Loader
+  const handleAutoCrop = useCallback(() => {
+    setAutoCropping(true);
+    setTimeout(() => {
+      const c = canvasRef.current;
+      if (!c) { setAutoCropping(false); return; }
+      const ctx = c.getContext("2d");
+      if (!ctx || c.width === 0 || c.height === 0) { setAutoCropping(false); return; }
+
+      const width = c.width;
+      const height = c.height;
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const data = imgData.data;
+
+      const bgR = data[0], bgG = data[1], bgB = data[2], bgA = data[3];
+
+      const isBgPixel = (x: number, y: number) => {
+        const idx = (y * width + x) * 4;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
+        if (a < 20) return true;
+        const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB) + Math.abs(a - bgA);
+        return diff < 40;
+      };
+
+      let minX = width, minY = height, maxX = 0, maxY = 0;
+      let found = false;
+
+      const step = Math.max(1, Math.floor(Math.min(width, height) / 600));
+      for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+          if (!isBgPixel(x, y)) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+            found = true;
+          }
+        }
+      }
+
+      if (found && maxX > minX && maxY > minY) {
+        const padX = Math.round(width * 0.02);
+        const padY = Math.round(height * 0.02);
+
+        const cLeft = Math.max(0, minX - padX);
+        const cTop = Math.max(0, minY - padY);
+        const cRight = Math.max(0, width - (maxX + padX));
+        const cBottom = Math.max(0, height - (maxY + padY));
+
+        setCrop({
+          left: Math.round((cLeft / width) * 100),
+          top: Math.round((cTop / height) * 100),
+          right: Math.round((cRight / width) * 100),
+          bottom: Math.round((cBottom / height) * 100),
+        });
+      }
+      setAutoCropping(false);
+      setAiStatus("✨ Auto-cropped content bounds!");
+      setTimeout(() => setAiStatus(""), 3000);
+    }, 600);
+  }, []);
 
   // Video Pro Multi-Track State
   const [videoPlaying,setVideoPlaying]=useState(false);
@@ -1229,6 +1294,7 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
 
   // Cursor helper
   const getCursor=()=>{
+    if(mainTool==="select") return"grab";
     if(mainTool==="pen") return PEN_CURSOR;
     if(mainTool==="erase") return"none";
     if(mainTool==="text") return"text";
@@ -1277,6 +1343,15 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
       {saving&&<BrandLoader message="Saving changes…" theme={theme}/>}
       {exporting&&<BrandLoader message="Exporting video render…" theme={theme}/>}
       {aiProcessing&&<BrandLoader message={aiStatus||"AI processing…"} theme={theme}/>}
+      {autoCropping && <BrandLoader message="✨ Magical Auto-Crop in progress…" subMessage="Detecting subject & content boundaries" theme={theme}/>}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        getCanvas={() => canvasRef.current}
+        fileName={loadedFile?.name || "design"}
+      />
 
       {wtActive&&<WalkthroughOverlay idx={wtIdx} steps={WT_STEPS} isDark={isDark}
         onNext={()=>setWtIdx(i=>Math.min(i+1,WT_STEPS.length-1))}
@@ -1648,6 +1723,7 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
         <div style={{display:"flex",alignItems:"center",gap:"4px",flexShrink:0}}>
           <button onClick={undo} disabled={!history.length} style={{padding:"5px 8px",borderRadius:"6px",background:V("hover"),border:`1px solid ${V("border")}`,color:V("text-muted"),fontSize:"11px",cursor:"pointer"}}><Undo2 size={12}/> Undo</button>
           <button onClick={redo} disabled={!future.length} style={{padding:"5px 8px",borderRadius:"6px",background:V("hover"),border:`1px solid ${V("border")}`,color:V("text-muted"),fontSize:"11px",cursor:"pointer"}}><Redo2 size={12}/> Redo</button>
+          <button onClick={() => setShareOpen(true)} style={{padding:"5px 10px",borderRadius:"6px",background:"linear-gradient(135deg,rgba(34,211,238,0.15),rgba(99,102,241,0.15))",border:"1px solid rgba(34,211,238,0.4)",color:"#22d3ee",fontSize:"11px",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:"4px"}}><Share2 size={12}/> Share</button>
           {isVideo&&<button onClick={doExportVideo} style={{padding:"5px 12px",borderRadius:"6px",background:"linear-gradient(135deg,#f97316,#ef4444)",color:"#fff",fontSize:"11px",fontWeight:700,border:"none",cursor:"pointer"}}><Film size={12}/> Export Video</button>}
           {isImage&&<button onClick={doSave} style={{padding:"5px 12px",borderRadius:"6px",background:"linear-gradient(135deg,#2563eb,#7c3aed)",color:"#fff",fontSize:"11px",fontWeight:700,border:"none",cursor:"pointer"}}><Check size={12}/> Save</button>}
         </div>
@@ -1832,6 +1908,32 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
               </p>
             </div>
           )}
+
+          {/* ── CROP SUB-OPTIONS ── */}
+          {mainTool === "crop" && (
+            <div style={{ padding: "6px 8px" }}>
+              <p style={{ fontSize: "9px", fontWeight: 700, color: "#f97316", marginBottom: "5px", textTransform: "uppercase", letterSpacing: ".06em" }}>Crop Tool</p>
+              <button
+                onClick={handleAutoCrop}
+                style={{
+                  width: "100%", padding: "6px", borderRadius: "6px", border: "none", cursor: "pointer",
+                  background: "linear-gradient(135deg,#22d3ee,#6366f1)", color: "#fff", fontSize: "11px", fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", marginBottom: "6px"
+                }}
+              >
+                <Sparkles size={12} /> Auto Crop
+              </button>
+              <button
+                onClick={() => setCrop({ top: 0, left: 0, right: 0, bottom: 0 })}
+                style={{
+                  width: "100%", padding: "6px", borderRadius: "6px", border: `1px solid ${V("border")}`,
+                  background: V("hover"), color: V("text-dim"), fontSize: "10px", fontWeight: 600, cursor: "pointer"
+                }}
+              >
+                Reset Crop
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── CENTER CANVAS ── */}
@@ -1844,7 +1946,7 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
 
             <div style={{position:"relative",display:"inline-block",transform:`scale(${zoom})`,transformOrigin:"center center",transition:"transform .1s"}}>
               <canvas ref={canvasRef}
-                onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd}
+                onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={() => setEraserPos(null)}
                 style={{display:"block",borderRadius:"4px",border:`1px solid ${V("border-2")}`,
                         boxShadow:"0 0 40px rgba(0,0,0,0.5)",cursor:getCursor(),maxWidth:"100%",maxHeight:"calc(100vh - 250px)"}}/>
               <canvas ref={overlayRef}
@@ -2010,6 +2112,39 @@ function CanvasStudioInner({file:initialFile,onSave,onCancel,portalMode=false}:S
                   </div>
                 );
               })}
+
+              {/* High-Visibility Eraser Pointer Visual */}
+              {mainTool === "erase" && eraserPos && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `${eraserPos.x - eraserSize}px`,
+                    top: `${eraserPos.y - eraserSize}px`,
+                    width: `${eraserSize * 2}px`,
+                    height: `${eraserSize * 2}px`,
+                    borderRadius: "50%",
+                    border: "2px solid #ef4444",
+                    boxShadow: "0 0 0 1.5px #ffffff, 0 0 12px rgba(239,68,68,0.8)",
+                    background: "rgba(239, 68, 68, 0.15)",
+                    pointerEvents: "none",
+                    boxSizing: "border-box",
+                    zIndex: 1000,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "4px",
+                      height: "4px",
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      boxShadow: "0 0 4px #000000",
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Floating status */}
